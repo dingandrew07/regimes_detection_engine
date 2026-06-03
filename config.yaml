@@ -1,0 +1,82 @@
+paths:
+  data_dir:      "data"
+  cache_dir:     "cache"
+  reports_dir:   "reports"
+
+data_sources:
+  market_file:        "spx_monthly.xlsx"     # SPX levels (monthly)
+  copper_file:        "copper_monthly.xlsx"  # Copper spot
+  spx_daily_file:     "spx_daily.xlsx"       # daily SPX for realised σ + corr
+
+  # FRED tickers
+  gs10:  "GS10"       # 10-Y constant-maturity yield
+  tb3ms: "TB3MS"      # 3-month T-bill (also used for slope & policy)
+  wti:   "WTISPLC"    # WTI spot
+  dgs10: "DGS10"      # daily 10-Y yield for corr series
+
+  # Market‐data APIs
+  vix_ticker: "^VIX"  # yfinance symbol for VIX
+
+state_variables:
+  end_date: "2024-12-31"          # final observation for every series
+  diff_months:   12               # 12-month difference (z-score)
+  rolling_years: 10               # 10-year rolling σ  (z-score)
+  rolling_min_periods: 12         # minimum periods (12 months = 1 year) for rolling std calculation (z-score)
+  winsorize:
+    lower: -3
+    upper: 3
+
+similarity_score:
+  variable_weights:
+    Market: 1.0                   # Market level (log S&P 500)
+    "Yield curve": 1.0            # 10Y - 3M yield spread
+    Oil: 1.0                      # WTI oil price
+    Copper: 1.0                   # Copper price
+    "Monetary policy": 1.0        # 3-month T-bill rate
+    Volatility: 1.0               # Realized vol / VIX
+    "Stock-bond correlation": 1.0 # 3-year rolling correlation
+  mask_horizon:  36               # months excluded to avoid momentum bias (default: 36 months), change to 0 for similar_periods.py visualization
+  similarity_window: 1            # rolling window for similarity calculation (1, 3, or 6 months)
+
+regime_shift:
+  lookback_periods: [12, 24, 36, 48]  # months for EWMA calculation (1-year, 2-year, 3-year, 4-year)
+
+factor_returns:
+  end_date: "2024-12-31"          # final observation for every series (shared with state_variables)
+
+back_test:
+  n_buckets: 5                    # number of buckets for backtest 
+  back_test_start_date: "1985-01-31" # start date for backtest
+  forward_look_months: 1          # number of months to look forward for returns (default: 1 month)
+  vol_target: 0.15                # 15 % annual vol for targeting
+  vol_window: 36                  # rolling window for vol targeting
+
+similar_periods:
+  target_month: "2024-12"         # default target month for similar_periods.py
+
+analysis:
+  clustering_analysis:
+    k_min: 2                        # minimum number of clusters to test
+    k_max: 6                        # maximum number of clusters to test
+    random_state: 42                # random seed for reproducibility
+    n_init: 10                      # number of k-means initializations
+    max_iter: 300                   # maximum iterations for k-means
+    pca_n_components: 2             # number of principal components for visualization
+
+  alpha_by_regime:
+    regime_method: "percentile"              # method for regime labeling: "percentile" or "absolute"
+    regime_threshold_percentile: 0.5         # percentile threshold (0-1) used when method="percentile" (e.g., 0.5 = median, 0.75 = 75th percentile)
+    regime_threshold_absolute: 0.5           # absolute EWMA value threshold used when method="absolute"
+
+  generate_equal_weighted_exhibit: false   # whether to generate equal-weighted long-only across all quintiles
+  
+  generate_random_long_bias:
+    enabled: false                          # whether to generate random long bias investigation
+    random_long_bias: 0.75                  # probability of long signal in random bias (default: 0.75 = 75% long bias)
+    random_seed: 42                         # random seed for reproducibility
+
+extensions:
+  efficacy_score:
+    enabled: true                      # Enable efficacy score extension for confidence scaling
+    bootstrap_iterations: 200           # Number of bootstrap iterations (default: 200)
+    save_series: true                   # Save efficacy and multiplier time series for plotting
