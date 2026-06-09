@@ -78,12 +78,12 @@ def plot_similar_periods(
     if target_month is None:
         # Try to read from config.yaml
         try:
-            config_target = cfg.get('similar_periods', {}).get('target_month', None)
+            config_target = cfg.get('analysis', {}).get('similar_periods', {}).get('target_month', None)
             if config_target is None:
-                raise ValueError("No target_month specified in config.yaml under similar_periods:target_month")
+                raise ValueError("No target_month specified in config.yaml under analysis:similar_periods:target_month")
             target_month = config_target
         except Exception as e:
-            raise ValueError(f"No target_month provided and could not read from config.yaml under similar_periods:target_month: {e}")
+            raise ValueError(f"No target_month provided and could not read from config.yaml under analysis:similar_periods:target_month: {e}")
 
     # Load similarity scores (masked for selection, unmasked for plotting)
     if similarity_scores_file is None:
@@ -219,7 +219,7 @@ if __name__ == "__main__":
     try:
         # Load config to get default similarity_window
         cfg = load_config()
-        similarity_window = cfg['similarity_score']['similarity_window']
+        similarity_window = cfg['state_variables']['similarity_score']['similarity_window']
         
         # Generate plot for January 2009
         plot_similar_periods(similarity_window=similarity_window)

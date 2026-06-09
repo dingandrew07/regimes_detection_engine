@@ -213,20 +213,20 @@ if __name__ == "__main__":
         exit(1)
     
     # Load variable weights from config
-    variable_weights = cfg['similarity_score']['variable_weights']
+    variable_weights = cfg['state_variables']['similarity_score']['variable_weights']
     
     # Determine mask_horizon
     if args.mask_horizon is not None:
         mask_horizon = args.mask_horizon
     else:
-        mask_horizon = cfg['similarity_score']['mask_horizon']
+        mask_horizon = cfg['state_variables']['similarity_score']['mask_horizon']
     print(f"Using mask_horizon = {mask_horizon}")
 
     # Determine similarity_window
     if args.similarity_window is not None:
         similarity_window = args.similarity_window
     else:
-        similarity_window = cfg['similarity_score']['similarity_window']
+        similarity_window = cfg['state_variables']['similarity_score']['similarity_window']
     print(f"Using similarity_window = {similarity_window}")
 
     # Calculate global similarity scores (cache file is handled inside the function)

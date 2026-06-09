@@ -118,7 +118,7 @@ def run_backtest(
             )
         efficacy_config = efficacy_config or {}
         bootstrap_iterations = efficacy_config.get('bootstrap_iterations', 200)
-        random_seed = cfg.get('analysis', {}).get('random_seed', 42)
+        random_seed = cfg.get('extensions', {}).get('efficacy_score', {}).get('random_seed', 42)
         
         efficacy_scores = pd.Series(index=dates, dtype=float)
         efficacy_stds = pd.Series(index=dates, dtype=float)
@@ -469,10 +469,10 @@ if __name__ == "__main__":
     warnings.filterwarnings("ignore", category=FutureWarning)
     # Run backtest with defaults from config
     params = dict(
-        n_buckets=cfg["back_test"].get("n_buckets", 5),
-        back_test_start_date=cfg["back_test"].get("back_test_start_date", "1985-01-31"),
-        forward_look_months=cfg["back_test"].get("forward_look_months", 1),
-        similarity_window=cfg["similarity_score"].get("similarity_window", 1),
+        n_buckets=cfg["backtest"].get("n_buckets", 5),
+        back_test_start_date=cfg["backtest"].get("back_test_start_date", "1985-01-31"),
+        forward_look_months=cfg["backtest"].get("forward_look_months", 1),
+        similarity_window=cfg["state_variables"]["similarity_score"].get("similarity_window", 1),
     )
     
     # Check if efficacy extension is enabled
@@ -710,8 +710,8 @@ if __name__ == "__main__":
 
     # Generate Exhibit 1
     print("\nGenerating Exhibit 1: Volatility Targeting Analysis...")
-    vol_target = cfg["back_test"]["vol_target"]
-    vol_window = cfg["back_test"]["vol_window"]
+    vol_target = cfg["backtest"]["vol_target"]
+    vol_window = cfg["backtest"]["vol_window"]
 
     exhibit1_results = generate_exhibit1(quintile_returns, vol_target, vol_window)
     

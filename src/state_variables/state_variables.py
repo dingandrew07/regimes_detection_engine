@@ -44,7 +44,7 @@ raw_data_dict = {}
 
 # 1.1 Market Level (S&P 500)
 print("1. Loading Market data…")
-market_file_path = Path(cfg['paths']['data_dir']) / cfg['data_sources']['market_file']
+market_file_path = Path(cfg['paths']['data_dir']) / cfg['state_variables']['data_sources']['market_file']
 spx_monthly_df   = pd.read_excel(market_file_path, index_col=0, parse_dates=True)
 
 market_series = (
@@ -57,8 +57,8 @@ raw_data_dict['Market'] = market_series
 
 # 1.2 Yield Curve (10Y – 3M)
 print("2. Loading Yield-Curve data…")
-gs10_ticker  = cfg['data_sources']['gs10']
-tb3ms_ticker = cfg['data_sources']['tb3ms']
+gs10_ticker  = cfg['state_variables']['data_sources']['gs10']
+tb3ms_ticker = cfg['state_variables']['data_sources']['tb3ms']
 yield_data   = pdr.get_data_fred([gs10_ticker, tb3ms_ticker],
                                  start='1962-01-01', end=end_date)
 
@@ -71,7 +71,7 @@ raw_data_dict['Yield curve'] = yield_curve
 
 # 1.3 Oil Price (WTI spot)
 print("3. Loading Oil-Price data…")
-wti_ticker = cfg['data_sources']['wti']
+wti_ticker = cfg['state_variables']['data_sources']['wti']
 oil_series = (
     pdr.get_data_fred(wti_ticker, start='1946-01-01', end=end_date)[wti_ticker]
       .resample('M').last()
@@ -81,7 +81,7 @@ raw_data_dict['Oil'] = oil_series
 
 # 1.4 Copper Price
 print("4. Loading Copper-Price data…")
-copper_file_path = Path(cfg['paths']['data_dir']) / cfg['data_sources']['copper_file']
+copper_file_path = Path(cfg['paths']['data_dir']) / cfg['state_variables']['data_sources']['copper_file']
 copper_df = pd.read_excel(copper_file_path, index_col=0, parse_dates=True)
 
 copper_price = (
@@ -103,7 +103,7 @@ raw_data_dict['Monetary policy'] = monetary_series
 
 # 1.6 Volatility (realised σ + VIX)
 print("6. Loading and constructing Volatility series…")
-spx_daily_file = Path(cfg['paths']['data_dir']) / cfg['data_sources']['spx_daily_file']
+spx_daily_file = Path(cfg['paths']['data_dir']) / cfg['state_variables']['data_sources']['spx_daily_file']
 spx_daily_df = pd.read_excel(spx_daily_file, index_col=0, parse_dates=True)
 spx_daily = spx_daily_df['SPX_daily'].squeeze()
 
@@ -118,7 +118,7 @@ realised_vol_monthly = realised_vol_daily.resample('M').last()  # Annualized per
 realised_vol = realised_vol_monthly.loc[first_vol_date:'1989-12-31']
 
 # 6B – VIX post-1990
-vix_ticker  = cfg['data_sources']['vix_ticker']
+vix_ticker  = cfg['state_variables']['data_sources']['vix_ticker']
 vix_data = yf.download(vix_ticker, start='1990-01-01', end=end_date, progress=False)
 if vix_data is not None and not vix_data.empty:
     vix_close = vix_data['Close'].squeeze()
@@ -137,7 +137,7 @@ print("7. Loading and constructing Stock-Bond Correlation series…")
 spx_ret = spx_daily.pct_change()
 spx_ret.name = 'stock_ret'
 
-dgs10_ticker  = cfg['data_sources']['dgs10']
+dgs10_ticker  = cfg['state_variables']['data_sources']['dgs10']
 yield_daily   = pdr.get_data_fred(dgs10_ticker,
                                   start='1962-01-02', end=end_date)[dgs10_ticker]
 bond_chg      = yield_daily.diff()

@@ -16,7 +16,7 @@ def load_config() -> dict:
 cfg = load_config()
 DATA_DIR = Path(cfg["paths"]["data_dir"])
 DATA_DIR.mkdir(parents=True, exist_ok=True)
-END_DATE = pd.to_datetime(cfg["factor_returns"]["end_date"])
+END_DATE = pd.to_datetime(cfg["state_variables"]["factor_returns"]["end_date"])
 
 # -----------------------------------------------------------------------------#
 # 1  Download & tidy the factor data

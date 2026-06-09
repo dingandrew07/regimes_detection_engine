@@ -553,13 +553,13 @@ def generate_appendix(config: dict) -> None:
     Parameters:
     -----------
     config : dict
-        Configuration dictionary containing back_test and similarity_score parameters
+        Configuration dictionary containing backtest and state_variables.similarity_score parameters
     """
     params = dict(
-        n_buckets=config["back_test"].get("n_buckets", 5),
-        back_test_start_date=config["back_test"].get("back_test_start_date", "1985-01-31"),
-        forward_look_months=config["back_test"].get("forward_look_months", 1),
-        similarity_window=config["similarity_score"].get("similarity_window", 1),
+        n_buckets=config["backtest"].get("n_buckets", 5),
+        back_test_start_date=config["backtest"].get("back_test_start_date", "1985-01-31"),
+        forward_look_months=config["backtest"].get("forward_look_months", 1),
+        similarity_window=config["state_variables"]["similarity_score"].get("similarity_window", 1),
     )
     generate_appendix_exhibits(**params)
 
@@ -571,10 +571,10 @@ if __name__ == "__main__":
     
     # Get parameters from config
     params = dict(
-        n_buckets=cfg["back_test"].get("n_buckets", 5),
-        back_test_start_date=cfg["back_test"].get("back_test_start_date", "1985-01-31"),
-        forward_look_months=cfg["back_test"].get("forward_look_months", 1),
-        similarity_window=cfg["similarity_score"].get("similarity_window", 1),
+        n_buckets=cfg["backtest"].get("n_buckets", 5),
+        back_test_start_date=cfg["backtest"].get("back_test_start_date", "1985-01-31"),
+        forward_look_months=cfg["backtest"].get("forward_look_months", 1),
+        similarity_window=cfg["state_variables"]["similarity_score"].get("similarity_window", 1),
     )
     
     generate_appendix_exhibits(**params)

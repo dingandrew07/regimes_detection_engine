@@ -260,7 +260,7 @@ def run_regime_shift_analysis(
         raise
     
     # Get lookback periods from config
-    lookback_periods = cfg['regime_shift']['lookback_periods']
+    lookback_periods = cfg['regime_shifts']['regime_shift']['lookback_periods']
     
     # Calculate EWMA regime shifts
     ewma_df = calculate_ewma_regime_shifts(

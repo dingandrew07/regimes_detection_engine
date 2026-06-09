@@ -105,10 +105,10 @@ def run_backtest(args):
     
     # Extract backtest parameters from config
     backtest_params = {
-        'n_buckets': config['back_test'].get('n_buckets', 5),
-        'back_test_start_date': config['back_test'].get('back_test_start_date', '1985-01-31'),
-        'forward_look_months': config['back_test'].get('forward_look_months', 1),
-        'similarity_window': config['similarity_score'].get('similarity_window', 1),
+        'n_buckets': config['backtest'].get('n_buckets', 5),
+        'back_test_start_date': config['backtest'].get('back_test_start_date', '1985-01-31'),
+        'forward_look_months': config['backtest'].get('forward_look_months', 1),
+        'similarity_window': config['state_variables']['similarity_score'].get('similarity_window', 1),
     }
     
     # Check if efficacy extension is enabled

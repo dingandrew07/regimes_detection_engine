@@ -741,12 +741,12 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     # Get parameters from config, with CLI args as overrides
-    alpha_config = cfg.get("analysis", {}).get("alpha_by_regime", {})
+    alpha_config = cfg.get("regime_shifts", {}).get("alpha_by_regime", {})
     params = dict(
-        n_buckets=cfg["back_test"].get("n_buckets", 5),
-        back_test_start_date=cfg["back_test"].get("back_test_start_date", "1985-01-31"),
-        forward_look_months=cfg["back_test"].get("forward_look_months", 1),
-        similarity_window=cfg["similarity_score"].get("similarity_window", 1),
+        n_buckets=cfg["backtest"].get("n_buckets", 5),
+        back_test_start_date=cfg["backtest"].get("back_test_start_date", "1985-01-31"),
+        forward_look_months=cfg["backtest"].get("forward_look_months", 1),
+        similarity_window=cfg["state_variables"]["similarity_score"].get("similarity_window", 1),
         regime_method=args.method if args.method is not None else alpha_config.get("regime_method", "percentile"),
         regime_threshold_percentile=args.threshold_percentile if args.threshold_percentile is not None else alpha_config.get("regime_threshold_percentile", None),
         regime_threshold_absolute=args.threshold_absolute if args.threshold_absolute is not None else alpha_config.get("regime_threshold_absolute", None),
