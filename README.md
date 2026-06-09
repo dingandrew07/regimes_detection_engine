@@ -28,16 +28,15 @@ Run after the main pipeline. These scripts depend on cached outputs from the ste
 
 1. `src/analysis/similar_periods.py` — similar-period visualizations
 2. `src/analysis/clustering_analysis.py` — k-means clustering exhibits
-3. `src/analysis/regime_shifts/regime_shift.py` — EWMA regime-shift series and Exhibit 9
-4. `src/analysis/regime_shifts/alpha_by_regime.py` — alpha performance by regime (requires backtest + EWMA regime shifts from step 3)
+3. `src/regime_shifts/regime_shift.py` — EWMA regime-shift series and Exhibit 9
+4. `src/regime_shifts/alpha_by_regime.py` — alpha performance by regime (requires backtest + EWMA regime shifts from step 3)
 
 ## Report Layout
 
 | Folder | Contents |
 |--------|----------|
-| `reports/analysis/` | Clustering exhibits |
+| `reports/analysis/` | Clustering exhibits, similar-period plots (`similar periods/`) |
 | `reports/regime_shifts/` | Exhibit 9 (EWMA), alpha-by-regime exhibit and summary |
-| `reports/similar periods/` | Similar-period plots |
 | `reports/backtest/` | Core backtest exhibits (Exhibits 1, 10–12) |
 | `reports/extensions/` | Extension outputs (`efficacy_score/`, `equal_weighted/`, `random_long_bias/`) |
 

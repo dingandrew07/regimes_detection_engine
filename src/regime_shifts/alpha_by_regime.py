@@ -90,10 +90,10 @@ def load_backtest_returns(
         Backtest returns DataFrame
     """
     try:
-        from ...back_test import run_backtest
+        from ..back_test import run_backtest
     except ImportError:
         import sys
-        sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
         from back_test import run_backtest
     return run_backtest(
         n_buckets=n_buckets,

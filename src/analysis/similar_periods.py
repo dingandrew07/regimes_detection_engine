@@ -194,8 +194,8 @@ def plot_similar_periods(
         if output_file is None:
             output_file = f"similar_periods_{target_month.replace('-', '_')}_window{similarity_window}.png"
         
-        # Save to similar periods subfolder
-        similar_periods_dir = REPORTS_DIR / "similar periods"
+        # Save to reports/analysis/similar periods/
+        similar_periods_dir = REPORTS_DIR / "analysis" / "similar periods"
         similar_periods_dir.mkdir(parents=True, exist_ok=True)
         output_path = similar_periods_dir / output_file
         plt.savefig(output_path, dpi=300, bbox_inches='tight')
