@@ -20,12 +20,12 @@ import yaml
 # Add project root to path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from src.factor_returns import download_factor_data
-from src.state_variables import get_state_variables
-from src.similarity_score import calculate_similarity_scores
-from src.back_test import run_backtest as execute_backtest
+from src.state_variables.factor_returns import download_factor_data
+from src.state_variables.state_variables import get_state_variables
+from src.state_variables.similarity_score import calculate_similarity_scores
+from src.backtest.back_test import run_backtest as execute_backtest
 from src.similar_periods import find_similar_periods
-from src.appendix import generate_appendix
+from src.backtest.appendix import generate_appendix
 
 
 def update_config(config, updates):

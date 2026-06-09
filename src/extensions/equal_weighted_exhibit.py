@@ -22,9 +22,9 @@ REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Import backtest functions
 try:
-    from ..back_test import compute_performance_metrics
+    from ..backtest.back_test import compute_performance_metrics
 except ImportError:
-    from back_test import compute_performance_metrics
+    from backtest.back_test import compute_performance_metrics
 
 # -----------------------------------------------------------------------------#
 # 0  Equal-Weighted Long-Only Across All Quintiles

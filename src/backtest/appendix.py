@@ -18,7 +18,7 @@ from typing import Optional
 try:
     from .back_test import compute_performance_metrics, load_factors, load_similarity_scores
 except ImportError:
-    from back_test import compute_performance_metrics, load_factors, load_similarity_scores
+    from backtest.back_test import compute_performance_metrics, load_factors, load_similarity_scores
 
 # -----------------------------------------------------------------------------#
 # 0  Config helpers

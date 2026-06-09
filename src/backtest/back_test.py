@@ -570,7 +570,7 @@ if __name__ == "__main__":
     # Check if equal-weighted exhibit should be generated (optional analysis)
     if cfg.get("extensions", {}).get("equal_weighted", {}).get("enabled", False):
         try:
-            from .extensions.equal_weighted_exhibit import generate_equal_weighted_exhibit
+            from ..extensions.equal_weighted_exhibit import generate_equal_weighted_exhibit
         except ImportError:
             from extensions.equal_weighted_exhibit import generate_equal_weighted_exhibit
         generate_equal_weighted_exhibit(quintile_returns)
@@ -582,7 +582,7 @@ if __name__ == "__main__":
     random_long_bias_config = cfg.get("extensions", {}).get("random_long_bias", {})
     if isinstance(random_long_bias_config, dict) and random_long_bias_config.get("enabled", False):
         try:
-            from .extensions.random_long_bias import generate_random_long_bias_exhibit
+            from ..extensions.random_long_bias import generate_random_long_bias_exhibit
         except ImportError:
             from extensions.random_long_bias import generate_random_long_bias_exhibit
         random_long_bias = random_long_bias_config.get("random_long_bias", 0.75)

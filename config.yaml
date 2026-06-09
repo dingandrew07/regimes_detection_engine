@@ -65,7 +65,7 @@ analysis:
 
   alpha_by_regime:
     regime_method: "percentile"              # method for regime labeling: "percentile" or "absolute"
-    regime_threshold_percentile: 0.5         # percentile threshold (0-1) used when method="percentile" (e.g., 0.5 = median, 0.75 = 75th percentile)
+    regime_threshold_percentile: 0.75         # percentile threshold (0-1) used when method="percentile" (e.g., 0.5 = median, 0.75 = 75th percentile)
     regime_threshold_absolute: 0.5           # absolute EWMA value threshold used when method="absolute"
 
 extensions:

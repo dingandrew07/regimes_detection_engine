@@ -7,7 +7,7 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 import joblib
-from src.state_variables import cfg
+from src.state_variables.state_variables import cfg
 
 # -----------------------------------------------------------------------------#
 # Helper functions

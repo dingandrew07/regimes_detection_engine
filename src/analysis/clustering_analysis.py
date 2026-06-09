@@ -49,11 +49,10 @@ plt.show = lambda *args, **kwargs: None
 try:
     # Load state_variables module dynamically
     # Try to find the file relative to current file or workspace root
-    current_dir = Path(__file__).parent
-    state_vars_path = current_dir / "state_variables.py"
+    src_dir = Path(__file__).resolve().parent.parent
+    state_vars_path = src_dir / "state_variables" / "state_variables.py"
     if not state_vars_path.exists():
-        # Try workspace root
-        state_vars_path = Path.cwd() / "src" / "state_variables.py"
+        state_vars_path = Path.cwd() / "src" / "state_variables" / "state_variables.py"
     
     spec = importlib.util.spec_from_file_location("state_variables", state_vars_path)
     sv = importlib.util.module_from_spec(spec)
@@ -65,8 +64,8 @@ try:
 except (ImportError, AttributeError, FileNotFoundError) as e:
     # If import fails, try alternative import method
     try:
-        sys.path.insert(0, str(Path(__file__).parent))
-        import state_variables as sv
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+        from state_variables import state_variables as sv
         df_zscored = sv.df_zscored.copy()
         common_start_date = sv.common_start_date
         print(f"Successfully loaded df_zscored from state_variables.py (alternative method)")
@@ -176,7 +175,7 @@ print("\n" + "="*70)
 print("Generating visualizations and analysis...")
 print("="*70)
 
-reports_dir = Path(cfg['paths']['reports_dir']) / 'analysis'
+reports_dir = Path(cfg['paths']['reports_dir']) / 'analysis' / 'clustering analysis'
 reports_dir.mkdir(parents=True, exist_ok=True)
 
 # 3.1 Plot inertia and silhouette scores

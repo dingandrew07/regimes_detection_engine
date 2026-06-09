@@ -22,9 +22,9 @@ REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Import backtest functions
 try:
-    from ..back_test import compute_performance_metrics, load_similarity_scores, load_factors
+    from ..backtest.back_test import compute_performance_metrics, load_similarity_scores, load_factors
 except ImportError:
-    from back_test import compute_performance_metrics, load_similarity_scores, load_factors
+    from backtest.back_test import compute_performance_metrics, load_similarity_scores, load_factors
 
 # -----------------------------------------------------------------------------#
 # 0  Random Long Bias Backtest
