@@ -245,8 +245,7 @@ def generate_random_long_bias_exhibit(
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
     
-    # Save exhibit to reports/analysis/
-    reports_dir = Path("reports/analysis")
+    reports_dir = REPORTS_DIR / "extensions" / "random_long_bias"
     reports_dir.mkdir(parents=True, exist_ok=True)
     plt.savefig(reports_dir / "exhibit_random_long_bias_comparison.png", dpi=150)
     # plt.show()  # (disabled: report is saved instead)

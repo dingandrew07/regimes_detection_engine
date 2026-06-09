@@ -16,7 +16,11 @@ Run these in sequence:
 
 ### Extensions
 
-- **Efficacy score** (`src/extensions/efficacy_score.py`) — not a separate run step. Enable via `extensions.efficacy_score.enabled` in `config.yaml`; `back_test.py` integrates it automatically when enabled.
+Optional analyses beyond the core paper replication. Enable via `extensions.*` in `config.yaml`; some are triggered automatically from `back_test.py` when enabled.
+
+- **Efficacy score** (`src/extensions/efficacy_score.py`) — modifies backtest behavior when `extensions.efficacy_score.enabled: true`
+- **Equal-weighted** (`src/extensions/equal_weighted_exhibit.py`) — when `extensions.equal_weighted.enabled: true`
+- **Random long bias** (`src/extensions/random_long_bias.py`) — when `extensions.random_long_bias.enabled: true`
 
 ### Analysis
 
@@ -24,10 +28,18 @@ Run after the main pipeline. These scripts depend on cached outputs from the ste
 
 1. `src/analysis/similar_periods.py` — similar-period visualizations
 2. `src/analysis/clustering_analysis.py` — k-means clustering exhibits
-3. `src/analysis/regime_shift.py` — EWMA regime-shift series and Exhibit 9
-4. `src/analysis/alpha_by_regime.py` — alpha performance by regime (requires backtest + EWMA regime shifts from step 3)
-5. `src/analysis/equal_weighted_exhibit.py` — optional; also runnable from `back_test.py` when `analysis.generate_equal_weighted_exhibit: true`
-6. `src/analysis/random_long_bias.py` — optional; also runnable from `back_test.py` when `analysis.generate_random_long_bias.enabled: true`
+3. `src/analysis/regime_shifts/regime_shift.py` — EWMA regime-shift series and Exhibit 9
+4. `src/analysis/regime_shifts/alpha_by_regime.py` — alpha performance by regime (requires backtest + EWMA regime shifts from step 3)
+
+## Report Layout
+
+| Folder | Contents |
+|--------|----------|
+| `reports/analysis/` | Clustering exhibits |
+| `reports/regime_shifts/` | Exhibit 9 (EWMA), alpha-by-regime exhibit and summary |
+| `reports/similar periods/` | Similar-period plots |
+| `reports/backtest/` | Core backtest exhibits (Exhibits 1, 10–12) |
+| `reports/extensions/` | Extension outputs (`efficacy_score/`, `equal_weighted/`, `random_long_bias/`) |
 
 ## Exhibit Generation Dependencies
 
@@ -37,7 +49,9 @@ Run after the main pipeline. These scripts depend on cached outputs from the ste
 | `clustering_analysis.py` | Clustering evaluation, PCA scatter, means table |
 | `similarity_score.py` | Caches similarity scores only (no exhibits) |
 | `similar_periods.py` | Similar-period plots |
-| `regime_shift.py` | Exhibit 9 (EWMA) |
+| `regime_shifts/regime_shift.py` | Exhibit 9 (EWMA) |
 | `back_test.py` | Exhibit 1 (volatility targeting), Exhibit 10 (quintile performance), Exhibit 11 (drawdown comparison), Exhibit 12 (quantile sweeps) |
-| `alpha_by_regime.py` | Alpha-by-regime exhibit and summary |
+| `regime_shifts/alpha_by_regime.py` | Alpha-by-regime exhibit and summary |
+| `extensions/equal_weighted_exhibit.py` | Equal-weighted performance exhibit |
+| `extensions/random_long_bias.py` | Random long bias comparison exhibit |
 | `appendix.py` | Appendix exhibits A1–A3 |

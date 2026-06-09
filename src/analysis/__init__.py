@@ -1,7 +1,7 @@
 """
 Analysis Package
 
-Contains analysis modules for regime detection, clustering, and similar periods visualization.
+Contains replication analyses: clustering, similar periods, and regime shift detection.
 """
 
 __version__ = "1.0.0"

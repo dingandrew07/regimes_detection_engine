@@ -568,23 +568,23 @@ if __name__ == "__main__":
     # 7A  Equal-Weighted Long-Only Across All Quintiles
     # -----------------------------------------------------------------------------#
     # Check if equal-weighted exhibit should be generated (optional analysis)
-    if cfg.get("analysis", {}).get("generate_equal_weighted_exhibit", False):
+    if cfg.get("extensions", {}).get("equal_weighted", {}).get("enabled", False):
         try:
-            from .analysis.equal_weighted_exhibit import generate_equal_weighted_exhibit
+            from .extensions.equal_weighted_exhibit import generate_equal_weighted_exhibit
         except ImportError:
-            from analysis.equal_weighted_exhibit import generate_equal_weighted_exhibit
+            from extensions.equal_weighted_exhibit import generate_equal_weighted_exhibit
         generate_equal_weighted_exhibit(quintile_returns)
 
     # -----------------------------------------------------------------------------#
     # 7B  Random Long Bias Investigation
     # -----------------------------------------------------------------------------#
-    # Check if random long bias investigation should be generated (optional analysis)
-    random_long_bias_config = cfg.get("analysis", {}).get("generate_random_long_bias", {})
+    # Check if random long bias investigation should be generated (optional extension)
+    random_long_bias_config = cfg.get("extensions", {}).get("random_long_bias", {})
     if isinstance(random_long_bias_config, dict) and random_long_bias_config.get("enabled", False):
         try:
-            from .analysis.random_long_bias import generate_random_long_bias_exhibit
+            from .extensions.random_long_bias import generate_random_long_bias_exhibit
         except ImportError:
-            from analysis.random_long_bias import generate_random_long_bias_exhibit
+            from extensions.random_long_bias import generate_random_long_bias_exhibit
         random_long_bias = random_long_bias_config.get("random_long_bias", 0.75)
         random_seed = random_long_bias_config.get("random_seed", 42)
         generate_random_long_bias_exhibit(

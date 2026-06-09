@@ -68,15 +68,16 @@ analysis:
     regime_threshold_percentile: 0.5         # percentile threshold (0-1) used when method="percentile" (e.g., 0.5 = median, 0.75 = 75th percentile)
     regime_threshold_absolute: 0.5           # absolute EWMA value threshold used when method="absolute"
 
-  generate_equal_weighted_exhibit: false   # whether to generate equal-weighted long-only across all quintiles
-  
-  generate_random_long_bias:
-    enabled: false                          # whether to generate random long bias investigation
-    random_long_bias: 0.75                  # probability of long signal in random bias (default: 0.75 = 75% long bias)
-    random_seed: 42                         # random seed for reproducibility
-
 extensions:
   efficacy_score:
     enabled: true                      # Enable efficacy score extension for confidence scaling
     bootstrap_iterations: 200           # Number of bootstrap iterations (default: 200)
     save_series: true                   # Save efficacy and multiplier time series for plotting
+
+  equal_weighted:
+    enabled: false                        # generate equal-weighted long-only across all quintiles exhibit
+
+  random_long_bias:
+    enabled: false                        # generate random long bias investigation exhibit
+    random_long_bias: 0.75                # probability of long signal in random bias (default: 0.75 = 75% long bias)
+    random_seed: 42                       # random seed for reproducibility

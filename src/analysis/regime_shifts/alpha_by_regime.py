@@ -57,10 +57,10 @@ def load_ewma_regime_shifts(use_cache: bool = True) -> pd.DataFrame:
         return joblib.load(cache_file)
     else:
         print("EWMA regime shifts not found in cache. Calculating...")
-        import sys
-        from pathlib import Path
-        sys.path.insert(0, str(Path(__file__).parent))
-        from regime_shift import run_regime_shift_analysis
+        try:
+            from .regime_shift import run_regime_shift_analysis
+        except ImportError:
+            from regime_shift import run_regime_shift_analysis
         return run_regime_shift_analysis(use_cache=use_cache, create_visualization=False)
 
 
@@ -89,11 +89,12 @@ def load_backtest_returns(
     pd.DataFrame
         Backtest returns DataFrame
     """
-    import sys
-    from pathlib import Path
-    # back_test.py is in src/, not src/analysis/, so go up one level
-    sys.path.insert(0, str(Path(__file__).parent.parent))
-    from back_test import run_backtest
+    try:
+        from ...back_test import run_backtest
+    except ImportError:
+        import sys
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+        from back_test import run_backtest
     return run_backtest(
         n_buckets=n_buckets,
         back_test_start_date=back_test_start_date,
@@ -431,10 +432,10 @@ def create_alpha_by_regime_exhibit(
     regime_labels : pd.Series, optional
         Regime labels to calculate month counts. If None, counts won't be displayed.
     save_path : Path, optional
-        Path to save the exhibit. If None, uses reports/analysis/
+        Path to save the exhibit. If None, uses reports/regime_shifts/
     """
     if save_path is None:
-        reports_dir = REPORTS_DIR / "analysis"
+        reports_dir = REPORTS_DIR / "regime_shifts"
         reports_dir.mkdir(parents=True, exist_ok=True)
         save_path = reports_dir / "alpha_by_regime_exhibit.png"
     else:
@@ -704,7 +705,7 @@ def run_alpha_by_regime_analysis(
     
     # Save table
     if save_table:
-        reports_dir = REPORTS_DIR / "backtest"
+        reports_dir = REPORTS_DIR / "regime_shifts"
         reports_dir.mkdir(parents=True, exist_ok=True)
         output_file = reports_dir / "alpha_by_regime_summary.csv"
         summary_table.to_csv(output_file)
@@ -753,4 +754,3 @@ if __name__ == "__main__":
     )
     
     summary = run_alpha_by_regime_analysis(**params)
-

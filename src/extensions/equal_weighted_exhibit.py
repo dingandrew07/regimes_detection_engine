@@ -74,8 +74,7 @@ def generate_equal_weighted_exhibit(quintile_returns: pd.DataFrame) -> None:
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
     
-    # Save exhibit to reports/analysis/
-    reports_dir = Path("reports/analysis")
+    reports_dir = REPORTS_DIR / "extensions" / "equal_weighted"
     reports_dir.mkdir(parents=True, exist_ok=True)
     plt.savefig(reports_dir / "exhibit_equal_weighted_performance.png", dpi=150)
     # plt.show()  # (disabled: report is saved instead)

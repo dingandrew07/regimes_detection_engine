@@ -153,10 +153,10 @@ def create_exhibit_9_ewma(
     ewma_df : pd.DataFrame
         Output from calculate_ewma_regime_shifts
     save_path : str or Path, optional
-        Path to save the plot. If None, uses reports/exhibit9_ewma.png
+        Path to save the plot. If None, uses reports/regime_shifts/exhibit9_ewma.png
     """
     if save_path is None:
-        reports_dir = Path(cfg["paths"]["reports_dir"]) / "similarity score"
+        reports_dir = Path(cfg["paths"]["reports_dir"]) / "regime_shifts"
         reports_dir.mkdir(parents=True, exist_ok=True)
         save_path = reports_dir / "exhibit9_ewma.png"
     else:
