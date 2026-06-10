@@ -83,7 +83,7 @@ Note: `df_zscored` (unwinsorized z-scores) lives in memory inside `state_variabl
 | `reports/analysis/clustering analysis/` | Clustering evaluation, PCA scatter, means table |
 | `reports/analysis/similar periods/` | Similar-period plots |
 | `reports/analysis/equal_weighted/` | Equal-weighted performance exhibit |
-| `reports/regime_shifts/` | Exhibit 9 (EWMA), alpha-by-regime exhibit |
+| `reports/regime_shifts/` | Exhibit 9 (EWMA), alpha-by-regime exhibit, gated backtest exhibits (`gated_backtest/<mode>/`) |
 | `reports/extensions/efficacy_score/backtest/` | Backtest exhibits when efficacy extension is enabled |
 | `reports/extensions/random_long_bias/` | Random long bias comparison exhibit |
 
@@ -171,7 +171,7 @@ When `extensions.efficacy_score.enabled: true`, all backtest report outputs rout
 - `cache/similarity_scores_window{N}.pkl`
 - `cache/df_factors.pkl`
 
-**Config:** `backtest.n_buckets`, `backtest.back_test_start_date`, `backtest.forward_look_months`, `backtest.vol_target`, `backtest.vol_window`, `state_variables.similarity_score.similarity_window`, `extensions.efficacy_score.enabled`, `analysis.equal_weighted.enabled`, `extensions.random_long_bias.enabled`
+**Config:** `backtest.n_buckets`, `backtest.back_test_start_date`, `backtest.forward_look_months`, `backtest.vol_target`, `backtest.vol_window`, `backtest.exhibit12_enabled`, `state_variables.similarity_score.similarity_window`, `extensions.efficacy_score.enabled`, `regime_shifts.regime_gating.enabled`, `regime_shifts.regime_gating.mode`, `analysis.equal_weighted.enabled`, `extensions.random_long_bias.enabled`
 
 **Outputs:**
 - In-memory `pd.DataFrame` of quintile returns (Q1…QN, long-short, long-only) used by appendix, alpha_by_regime, etc.
@@ -181,11 +181,14 @@ When `extensions.efficacy_score.enabled: true`, all backtest report outputs rout
 - `reports/backtest/exhibit12_quantile_sweeps.png`
 - `reports/backtest/exhibit1_volatility_targeting.png`
 - When efficacy extension enabled: all backtest reports route to `reports/extensions/efficacy_score/backtest/` instead (plus `efficacy_series.csv` and `efficacy_series_plot.png` when `extensions.efficacy_score.save_series: true`)
+- When regime gating enabled: exhibits route to `reports/regime_shifts/gated_backtest/<mode>/` (e.g. `resolution_only`, `exclude_crisis_onset`)
 
 **Notes:**
 - Date alignment: `similarity_scores` and `df_factors` are trimmed to their shared date range, then the last row is dropped from both (NaN in `df_factors` after the −1 shift).
 - Signal rule: mean bucket return > 0 → +1 (long), < 0 → −1 (short). No flat/zero positions.
 - Long-only benchmark: equal-weight exposure to all 6 factors each month, no timing signals.
+- **Regime gating** (optional): when `regime_shifts.regime_gating.enabled: true`, monthly realised returns are multiplied by 0 or 1 based on phase regime labels. Requires `regime_shifts.alpha_by_regime.regime_method: "phase"`. Modes: `resolution_only` (trade only in resolution) or `exclude_crisis_onset` (flat in crisis onset, full elsewhere).
+- **Exhibit 12** runs six extra full backtests when `backtest.exhibit12_enabled: true` (default `false` for faster iteration). Set to `true` when you need `exhibit12_quantile_sweeps.png`.
 
 ---
 
@@ -291,6 +294,30 @@ When `extensions.efficacy_score.enabled: true`, all backtest report outputs rout
 - **`phase` method** (default): four regimes — stable, elevated, crisis onset, resolution — using low/high percentile thresholds on EWMA level and direction.
 - **`percentile` method:** transition (above threshold) vs stable (at or below).
 - **`absolute` method:** transition vs stable using a fixed EWMA value threshold.
+- Labeling logic lives in `regime_labels.py` (shared with regime gating).
+
+---
+
+### `src/regime_shifts/regime_gating.py`
+
+**Purpose:** Regime-conditional exposure for the main backtest (Step 2). When enabled, scales each month's strategy return by 0 (cash) or 1 (full exposure) based on phase regime labels from EWMA.
+
+**CLI:** No separate subcommand. Enable via `regime_shifts.regime_gating.enabled: true` in `config.yaml` and run `python cli.py backtest`.
+
+**Inputs:**
+- `cache/ewma_regime_shifts.pkl` (via `regime_labels.py`)
+- Same backtest inputs as `back_test.py`
+
+**Config:** `regime_shifts.regime_gating.enabled`, `regime_shifts.regime_gating.mode` (`resolution_only` | `exclude_crisis_onset`); labeling thresholds from `regime_shifts.alpha_by_regime` (`regime_method` must be `"phase"`, `low_threshold_percentile`, `high_threshold_percentile`)
+
+**Outputs:**
+- Gated backtest exhibits under `reports/regime_shifts/gated_backtest/<mode>/` (Exhibits 1, 10, 11, 12)
+- `quintile_returns.attrs['regime_exposure']` and `attrs['regime_labels']` on the returned DataFrame
+
+**Notes:**
+- `resolution_only`: exposure 1 only when label is resolution; flat otherwise.
+- `exclude_crisis_onset`: exposure 0 in crisis onset; full in stable, elevated, and resolution.
+- Efficacy extension takes priority for report routing when both are enabled.
 
 ---
 

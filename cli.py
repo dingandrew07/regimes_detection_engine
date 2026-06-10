@@ -117,8 +117,17 @@ def run_backtest(args):
     
     if use_efficacy:
         print(f"📊 Efficacy extension enabled: {efficacy_config.get('bootstrap_iterations', 200)} bootstrap iterations")
+
+    regime_gating_config = config.get("regime_shifts", {}).get("regime_gating", {})
+    if regime_gating_config.get("enabled", False):
+        print(f"Regime gating enabled: mode={regime_gating_config.get('mode', 'resolution_only')}")
     
-    execute_backtest(**backtest_params, use_efficacy=use_efficacy, efficacy_config=efficacy_config)
+    execute_backtest(
+        **backtest_params,
+        use_efficacy=use_efficacy,
+        efficacy_config=efficacy_config,
+        regime_gating_config=regime_gating_config,
+    )
     print("✅ Backtest completed!")
 
 

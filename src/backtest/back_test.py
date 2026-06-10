@@ -7,9 +7,10 @@
 import pandas as pd
 import numpy as np
 import joblib
+import sys
 from pathlib import Path
 import warnings
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 import yaml
 import matplotlib.pyplot as plt
 
@@ -24,6 +25,34 @@ def load_config() -> dict:
 cfg = load_config()
 CACHE_DIR = Path(cfg["paths"]["cache_dir"])
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _ensure_src_on_path() -> None:
+    """Allow imports from src/ when back_test.py is run as a script."""
+    src_dir = str(Path(__file__).resolve().parent.parent)
+    if src_dir not in sys.path:
+        sys.path.insert(0, src_dir)
+
+
+def _import_regime_gating():
+    """Import regime_gating whether run via cli, -m, or python src/backtest/back_test.py."""
+    try:
+        from src.regime_shifts import regime_gating as rg
+        return rg
+    except ImportError:
+        try:
+            from regime_shifts import regime_gating as rg
+            return rg
+        except ImportError:
+            _ensure_src_on_path()
+            from regime_shifts import regime_gating as rg
+            return rg
+
+
+def _get_backtest_reports_dir() -> Path:
+    """Resolve backtest exhibit output directory (default, efficacy, or regime gating)."""
+    rg = _import_regime_gating()
+    return rg.get_backtest_reports_dir(cfg, Path(cfg["paths"]["reports_dir"]))
 
 # -----------------------------------------------------------------------------#
 # 1  Data Loading
@@ -60,6 +89,7 @@ def run_backtest(
     show_alignment_message: bool = True,
     use_efficacy: bool = False,
     efficacy_config: Optional[Dict[str, Any]] = None,
+    regime_gating_config: Optional[Dict[str, Any]] = None,
 ) -> pd.DataFrame:
     """
     Main backtesting engine. Returns DataFrame of bucketed strategy returns and summary stats.
@@ -80,6 +110,8 @@ def run_backtest(
         Whether to use efficacy score extension for confidence scaling
     efficacy_config : dict or None, default None
         Configuration for efficacy extension (bootstrap_iterations, etc.)
+    regime_gating_config : dict or None, default None
+        Configuration for regime-conditional exposure (enabled, mode)
     """
     # Load data
     similarity_scores = load_similarity_scores(similarity_window=similarity_window)
@@ -103,6 +135,13 @@ def run_backtest(
     all_bucket_returns = {}
     factor_names = df_factors.columns
     dates = df_factors.index
+
+    use_regime_gating = bool(regime_gating_config and regime_gating_config.get("enabled", False))
+    regime_exposure = None
+    regime_labels_series = None
+    if use_regime_gating:
+        rg = _import_regime_gating()
+        regime_exposure, regime_labels_series = rg.build_regime_exposure_series(cfg, dates)
     
     # Initialize efficacy extension data structures
     if use_efficacy:
@@ -131,40 +170,41 @@ def run_backtest(
         efficacy_stds = None
         multipliers = None
 
-    for quintile in range(1, n_buckets + 1):
-        bucket_returns = []
-        for t, T in enumerate(dates):
-            # Expanding window: use all history up to T (excluding T)
-            if t == 0:
-                bucket_returns.append(np.nan)
-                continue
-            hist_months = dates[:t]
-            dists = similarity_scores[T].loc[hist_months]
-            # Remove NaN values (masked months) before ranking
-            # This ensures masked months are not included in quintile buckets
-            dists = dists.dropna()
-            if len(dists) == 0:
-                # No valid historical data, skip this iteration
-                bucket_returns.append(np.nan)
-                continue
-            # Rank distances, break ties deterministically
-            ranks = dists.rank(method="first")
-            # Method 1: Equal-frequency buckets using numpy array splitting
-            sorted_idx = ranks.sort_values().index
-            n_hist = len(sorted_idx)
-            bucket_sizes = [n_hist // n_buckets + (1 if x < n_hist % n_buckets else 0) for x in range(n_buckets)]
-            bucket_edges = np.cumsum([0] + bucket_sizes)
-            # Select the months in the current quintile (bucket)
-            bucket_start = bucket_edges[quintile - 1]
-            bucket_end = bucket_edges[quintile]
-            bucket_idx = sorted_idx[bucket_start:bucket_end]
-            
-            # Compute efficacy score for Quintile 1 (if extension is enabled and we're on Q1)
-            if use_efficacy and quintile == 1:
-                # S(T) = Quintile 1 months (fixed for this month T)
-                S_T = bucket_idx
-                
-                # Compute efficacy score
+    bucket_returns_by_quintile = {q: [] for q in range(1, n_buckets + 1)}
+
+    for t, T in enumerate(dates):
+        if t == 0:
+            for quintile in range(1, n_buckets + 1):
+                bucket_returns_by_quintile[quintile].append(np.nan)
+            continue
+
+        hist_months = dates[:t]
+        dists = similarity_scores[T].loc[hist_months].dropna()
+        if len(dists) == 0:
+            for quintile in range(1, n_buckets + 1):
+                bucket_returns_by_quintile[quintile].append(np.nan)
+            continue
+
+        ranks = dists.rank(method="first")
+        sorted_idx = ranks.sort_values().index
+        n_hist = len(sorted_idx)
+        bucket_sizes = [
+            n_hist // n_buckets + (1 if x < n_hist % n_buckets else 0)
+            for x in range(n_buckets)
+        ]
+        bucket_edges = np.cumsum([0] + bucket_sizes)
+        all_bucket_idx = [
+            sorted_idx[bucket_edges[q - 1]:bucket_edges[q]]
+            for q in range(1, n_buckets + 1)
+        ]
+
+        if use_efficacy:
+            S_T = all_bucket_idx[0]
+            if len(S_T) == 0:
+                efficacy_scores.loc[T] = np.nan
+                efficacy_stds.loc[T] = np.nan
+                multipliers.loc[T] = 0.5
+            else:
                 efficacy_score, efficacy_std = compute_efficacy_with_realized(
                     S_T=S_T,
                     T=T,
@@ -173,70 +213,47 @@ def run_backtest(
                     bootstrap_iterations=bootstrap_iterations,
                     random_seed=random_seed,
                 )
-                
-                # Store efficacy metrics
                 efficacy_scores.loc[T] = efficacy_score
                 efficacy_stds.loc[T] = efficacy_std
-                
-                # Compute multiplier from efficacy
-                mult_T = efficacy_to_multiplier(efficacy_score)
-                multipliers.loc[T] = mult_T
-            elif use_efficacy and quintile == 1 and len(bucket_idx) == 0:
-                # Edge case: no valid S(T) for efficacy calculation
-                efficacy_scores.loc[T] = np.nan
-                efficacy_stds.loc[T] = np.nan
-                multipliers.loc[T] = 0.5  # Default to neutral multiplier
-            
-            # Get multiplier for this month (1.0 if efficacy not enabled)
-            # For quintiles 2-5, read the multiplier computed during Q1 processing
-            if use_efficacy:
-                if T in multipliers.index:
-                    mult_T = multipliers.loc[T]
-                    if np.isnan(mult_T):
-                        mult_T = 0.5  # Default to neutral if NaN
-                else:
-                    mult_T = 0.5  # Default if not yet computed (shouldn't happen)
+                multipliers.loc[T] = efficacy_to_multiplier(efficacy_score)
+
+        if use_efficacy:
+            mult_T = multipliers.loc[T]
+            if np.isnan(mult_T):
+                mult_T = 0.5
+        else:
+            mult_T = 1.0
+
+        if forward_look_months == 1:
+            forward_returns = df_factors.loc[T].values
+        else:
+            future_dates = dates[t:t + forward_look_months]
+            if len(future_dates) >= forward_look_months:
+                future_factor_returns = df_factors.loc[future_dates].values
+                forward_returns = np.prod(1 + future_factor_returns, axis=0) - 1
             else:
-                mult_T = 1.0
-            
-            # Per-factor signal
-            factor_signals = []
-            for f in factor_names:
-                bucket_months = bucket_idx
-                if len(bucket_months) == 0:
-                    factor_signals.append(0)
-                    continue
-                mean_ret = df_factors.loc[bucket_months, f].mean()
-                # Position rule: no flat, only long or short
-                if mean_ret > 0:
-                    signal = 1
-                else:
-                    signal = -1
-                factor_signals.append(signal)
-            
-            # Apply efficacy multiplier to factor signals (for all quintiles)
-            if use_efficacy:
-                factor_signals = [s * mult_T for s in factor_signals]
-            # Calculate forward-looking returns based on forward_look_months parameter
-            if forward_look_months == 1:
-                # Default behavior: use next month's returns
-                forward_returns = df_factors.loc[T].values
+                forward_returns = np.full(len(factor_names), np.nan)
+
+        for quintile in range(1, n_buckets + 1):
+            bucket_idx = all_bucket_idx[quintile - 1]
+            if len(bucket_idx) == 0:
+                factor_signals = np.zeros(len(factor_names))
             else:
-                # Look forward multiple months and calculate cumulative returns
-                future_dates = dates[t:t + forward_look_months]
-                if len(future_dates) >= forward_look_months:
-                    # Calculate cumulative returns over the forward period
-                    future_factor_returns = df_factors.loc[future_dates].values
-                    # Convert to cumulative returns: (1 + r1) * (1 + r2) * ... - 1
-                    cumulative_returns = np.prod(1 + future_factor_returns, axis=0) - 1
-                    forward_returns = cumulative_returns
-                else:
-                    # Not enough future data, use available data or skip
-                    forward_returns = np.full(len(factor_names), np.nan)
-            
-            realized = np.nansum(np.array(factor_signals) * forward_returns) / len(factor_names)
-            bucket_returns.append(realized)
-        all_bucket_returns[f"Q{quintile}"] = pd.Series(bucket_returns, index=dates)
+                mean_rets = df_factors.loc[bucket_idx, factor_names].mean().values
+                factor_signals = np.where(mean_rets > 0, 1, -1).astype(float)
+
+            if use_efficacy:
+                factor_signals = factor_signals * mult_T
+
+            realized = np.nansum(factor_signals * forward_returns) / len(factor_names)
+            if use_regime_gating:
+                realized *= regime_exposure.loc[T]
+            bucket_returns_by_quintile[quintile].append(realized)
+
+    all_bucket_returns = {
+        f"Q{quintile}": pd.Series(bucket_returns_by_quintile[quintile], index=dates)
+        for quintile in range(1, n_buckets + 1)
+    }
 
     # Build DataFrame
     quintile_returns = pd.DataFrame(all_bucket_returns)
@@ -244,10 +261,18 @@ def run_backtest(
     quintile_returns[f"Q1_minus_Q{n_buckets}"] = quintile_returns["Q1"] - quintile_returns[f"Q{n_buckets}"]
     # Long-only benchmark (mean of factors - 1/6 exposure to each)
     quintile_returns["long_only"] = df_factors.mean(axis=1)
+    if use_regime_gating:
+        quintile_returns["long_only"] = quintile_returns["long_only"] * regime_exposure
 
     # Restrict output to back_test_start_date onward
     quintile_returns = quintile_returns.loc[back_test_start_date:]
     
+    if use_regime_gating:
+        exposure_out = regime_exposure.loc[quintile_returns.index]
+        labels_out = regime_labels_series.loc[quintile_returns.index]
+        quintile_returns.attrs['regime_exposure'] = exposure_out
+        quintile_returns.attrs['regime_labels'] = labels_out
+
     # Store efficacy data as attributes of the return DataFrame (for later access)
     if use_efficacy:
         quintile_returns.attrs['efficacy_scores'] = efficacy_scores.loc[back_test_start_date:]
@@ -384,7 +409,7 @@ def generate_exhibit1(quintile_returns: pd.DataFrame, vol_target: float = 0.15, 
     vol_targeted_returns = apply_volatility_targeting(ls_returns, vol_target, vol_window)
     
     # Convert to annual returns (sum of 12 months)
-    annual_returns = vol_targeted_returns.resample('Y').sum() * 100  # Convert to percentage
+    annual_returns = vol_targeted_returns.resample('YE').sum() * 100  # Convert to percentage
     
     # Create bar chart with 40 equal-width bars
     plt.figure(figsize=(15, 8))
@@ -446,11 +471,7 @@ def generate_exhibit1(quintile_returns: pd.DataFrame, vol_target: float = 0.15, 
     plt.tight_layout()
     
     # Save to reports directory
-    try:
-        from src.extensions.efficacy_score import get_reports_dir
-    except ImportError:
-        from extensions.efficacy_score import get_reports_dir
-    reports_dir = get_reports_dir(Path(cfg["paths"]["reports_dir"]), cfg, "backtest")
+    reports_dir = _get_backtest_reports_dir()
     plt.savefig(reports_dir / "exhibit1_volatility_targeting.png", dpi=300, bbox_inches='tight')
     # plt.show()  # Commented out to prevent automatic plot display
     
@@ -461,6 +482,81 @@ def generate_exhibit1(quintile_returns: pd.DataFrame, vol_target: float = 0.15, 
     print(f"Average return when negative: {avg_negative:.1f}%")
     
     return binned_returns, percentage_positive, avg_positive, avg_negative
+
+# -----------------------------------------------------------------------------#
+# 5B  Exhibit 12: Quantile Sweeps
+# -----------------------------------------------------------------------------#
+def _run_exhibit12_sweep(
+    n: int,
+    back_test_start_date: str,
+    forward_look_months: int,
+    similarity_window: int,
+) -> tuple:
+    """Run one Exhibit 12 quantile sweep; returns (n, cum_series, sharpe) or (n, None, None)."""
+    qrets = run_backtest(
+        n_buckets=n,
+        back_test_start_date=back_test_start_date,
+        forward_look_months=forward_look_months,
+        similarity_window=similarity_window,
+        show_alignment_message=False,
+    )
+    col = f"Q1_minus_Q{n}"
+    metrics = compute_performance_metrics(qrets)
+    if col in qrets.columns and col in metrics.index:
+        cum = ((1 + qrets[col]).cumprod() - 1) * 100
+        return n, cum, metrics.loc[col, "AnnSharpe"]
+    print(f"Column {col} not found for n_buckets={n}. Skipping.")
+    return n, None, None
+
+
+def generate_exhibit12(
+    params: Dict[str, Any],
+    quantile_list: Optional[List[int]] = None,
+) -> None:
+    """Generate Exhibit 12: quantile sweep cumulative returns (parallel backtests)."""
+    quantile_list = quantile_list or [2, 3, 4, 5, 10, 20]
+    print("Generating Exhibit 12: Quantile Sweeps Plot...")
+
+    sweep_results = joblib.Parallel(n_jobs=-1)(
+        joblib.delayed(_run_exhibit12_sweep)(
+            n,
+            params["back_test_start_date"],
+            params["forward_look_months"],
+            params["similarity_window"],
+        )
+        for n in quantile_list
+    )
+
+    cumrets_dict = {}
+    sharpe_dict = {}
+    for n, cum, sr in sweep_results:
+        if cum is not None:
+            cumrets_dict[n] = cum
+            sharpe_dict[n] = sr
+
+    if not cumrets_dict:
+        print("No valid quantile sweep results to plot.")
+        return
+
+    cumrets_df = pd.DataFrame(cumrets_dict)
+    sharpe_series = pd.Series(sharpe_dict, name="AnnSharpe")
+
+    plt.figure(figsize=(10, 7))
+    colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+    for i, n in enumerate(cumrets_df.columns):
+        plt.plot(
+            cumrets_df.index,
+            cumrets_df[n],
+            label=f"{n} quantiles, SR: {sharpe_series[n]:.2f}",
+            color=colors[i % len(colors)],
+        )
+    plt.title("Fama-French quantile sweeps (top minus bottom)")
+    plt.ylabel("Cumulative return")
+    plt.xlabel("Date")
+    plt.legend(fontsize=11)
+    plt.tight_layout()
+    reports_dir = _get_backtest_reports_dir()
+    plt.savefig(reports_dir / "exhibit12_quantile_sweeps.png", dpi=150)
 
 # -----------------------------------------------------------------------------#
 # 6  Script execution
@@ -480,11 +576,14 @@ if __name__ == "__main__":
     use_efficacy = efficacy_config.get("enabled", False)
     if use_efficacy:
         print(f"Efficacy extension enabled: {efficacy_config.get('bootstrap_iterations', 200)} bootstrap iterations")
+
+    regime_gating_config = cfg.get("regime_shifts", {}).get("regime_gating", {})
     
     quintile_returns = run_backtest(
         **params,
         use_efficacy=use_efficacy,
         efficacy_config=efficacy_config,
+        regime_gating_config=regime_gating_config,
     )
 
     # Check if there is data at the backtest start date
@@ -556,11 +655,7 @@ if __name__ == "__main__":
 
     plt.tight_layout()
     # Save Exhibit 10 plot to reports/
-    try:
-        from src.extensions.efficacy_score import get_reports_dir
-    except ImportError:
-        from extensions.efficacy_score import get_reports_dir
-    reports_dir = get_reports_dir(Path(cfg["paths"]["reports_dir"]), cfg, "backtest")
+    reports_dir = _get_backtest_reports_dir()
     fig.savefig(reports_dir / "exhibit10_quintile_performance.png", dpi=150)
     # plt.show()  # (disabled: report is saved instead)
 
@@ -653,11 +748,7 @@ if __name__ == "__main__":
     plt.tight_layout()
     
     # Save the plot
-    try:
-        from src.extensions.efficacy_score import get_reports_dir
-    except ImportError:
-        from extensions.efficacy_score import get_reports_dir
-    reports_dir = get_reports_dir(Path(cfg["paths"]["reports_dir"]), cfg, "backtest")
+    reports_dir = _get_backtest_reports_dir()
     plt.savefig(reports_dir / "exhibit11_drawdown_comparison.png", dpi=150)
     # plt.show()  # (disabled: report is saved instead)
     
@@ -667,46 +758,10 @@ if __name__ == "__main__":
     # -----------------------------------------------------------------------------#
     # 9  Exhibit 12: Quantile Sweeps Plot
     # -----------------------------------------------------------------------------#
-    print("Generating Exhibit 12: Quantile Sweeps Plot...")
-    quantile_list = [2, 3, 4, 5, 10, 20]
-    plt.figure(figsize=(10, 7))
-    colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
-    # Prepare DataFrame to store cumulative returns and Sharpe ratios for each n_buckets
-    cumrets_dict = {}
-    sharpe_dict = {}
-    for n in quantile_list:
-        qrets = run_backtest(n_buckets=n, back_test_start_date=params["back_test_start_date"], forward_look_months=params["forward_look_months"], show_alignment_message=False)
-        col = f"Q1_minus_Q{n}"
-        metrics = compute_performance_metrics(qrets)
-        if col in qrets.columns and col in metrics.index:
-            # cumprod()-1 scaling (start at 0)
-            cum = ((1 + qrets[col]).cumprod() - 1) * 100
-            sr = metrics.loc[col, "AnnSharpe"]
-            cumrets_dict[n] = cum
-            sharpe_dict[n] = sr
-        else:
-            print(f"Column {col} not found for n_buckets={n}. Skipping.")
-    # Align all cumulative returns by index
-    cumrets_df = pd.DataFrame(cumrets_dict)
-    sharpe_series = pd.Series(sharpe_dict, name="AnnSharpe")
-    # Save to cache for later use - always overwrite to ensure parameter changes take effect
-    # Note: These cache files are not used elsewhere in the codebase
-    # cumrets_df.to_pickle(CACHE_DIR / "exhibit12_cumrets.pkl")
-    # sharpe_series.to_pickle(CACHE_DIR / "exhibit12_sharpe.pkl")
-    for i, n in enumerate(cumrets_df.columns):
-        plt.plot(cumrets_df.index, cumrets_df[n], label=f"{n} quantiles, SR: {sharpe_series[n]:.2f}", color=colors[i % len(colors)])
-    plt.title("Fama-French quantile sweeps (top minus bottom)")
-    plt.ylabel("Cumulative return")
-    plt.xlabel("Date")
-    plt.legend(fontsize=11)
-    plt.tight_layout()
-    try:
-        from src.extensions.efficacy_score import get_reports_dir
-    except ImportError:
-        from extensions.efficacy_score import get_reports_dir
-    reports_dir = get_reports_dir(Path(cfg["paths"]["reports_dir"]), cfg, "backtest")
-    plt.savefig(reports_dir / "exhibit12_quantile_sweeps.png", dpi=150)
-    # plt.show()  # (disabled: report is saved instead)
+    if cfg["backtest"].get("exhibit12_enabled", False):
+        generate_exhibit12(params)
+    else:
+        print("Skipping Exhibit 12 (backtest.exhibit12_enabled: false)")
 
     # Generate Exhibit 1
     print("\nGenerating Exhibit 1: Volatility Targeting Analysis...")

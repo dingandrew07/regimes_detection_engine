@@ -51,6 +51,7 @@ backtest:
   forward_look_months: 1          # number of months to look forward for returns (default: 1 month)
   vol_target: 0.15                # 15 % annual vol for targeting
   vol_window: 36                  # rolling window for vol targeting
+  exhibit12_enabled: false        # if true, back_test.py runs 6 extra sweeps for Exhibit 12 (slow)
 
 # src/analysis/
 analysis:
@@ -85,10 +86,15 @@ regime_shifts:
     regime_threshold_percentile: 0.75         # percentile threshold (0-1) used when method="percentile"
     regime_threshold_absolute: 0.5           # absolute EWMA value threshold used when method="absolute"
 
+  # src/regime_shifts/regime_gating.py (hooks into back_test.py when enabled)
+  regime_gating:
+    enabled: false                           # scale backtest returns by regime exposure (0 = cash, 1 = full)
+    mode: "resolution_only"                  # "resolution_only" | "exclude_crisis_onset"
+
 # src/extensions/
 extensions:
   efficacy_score:
-    enabled: true                      # Enable efficacy score extension for confidence scaling
+    enabled: false                      # Enable efficacy score extension for confidence scaling
     bootstrap_iterations: 200           # Number of bootstrap iterations (default: 200)
     random_seed: 42                     # random seed for efficacy bootstrap
     save_series: true                   # Save efficacy and multiplier time series for plotting
