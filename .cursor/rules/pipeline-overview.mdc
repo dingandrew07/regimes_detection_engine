@@ -1,0 +1,26 @@
+---
+description: Keep README pipeline overview in sync with code changes
+globs: src/**/*.py, config.yaml, cli.py
+alwaysApply: false
+---
+
+# Pipeline overview maintenance
+
+README.md is the single source of truth for the pipeline. Do not recreate or split out a separate `Implementation Pipeline.md`.
+
+When you add or change a script, config key, cache file, or report path, update README.md in the same change:
+
+1. **Run order** — add/reorder steps and CLI commands in the Main, Extensions, or Analysis tables.
+2. **Caches and reports** — update the cache inventory or report layout tables if paths change.
+3. **Module reference** — add or edit the matching `### src/...` section using this template:
+
+   - **Purpose:** one sentence
+   - **CLI:** command or "standalone only" / "triggered from …"
+   - **Inputs:** data files and cache dependencies
+   - **Config:** keys from `config.yaml` (use actual nested paths, e.g. `state_variables.similarity_score.mask_horizon`)
+   - **Outputs:** cache files and report paths (verify from code, not from memory)
+   - **Notes:** non-obvious behavior (alignment, invalidation, triggered hooks)
+
+4. **Exhibit index** — update the quick-reference table if exhibits or producers change.
+
+Verify paths and config keys against the source code and `config.yaml` before documenting them.
