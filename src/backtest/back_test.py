@@ -568,11 +568,11 @@ if __name__ == "__main__":
     # 7A  Equal-Weighted Long-Only Across All Quintiles
     # -----------------------------------------------------------------------------#
     # Check if equal-weighted exhibit should be generated (optional analysis)
-    if cfg.get("extensions", {}).get("equal_weighted", {}).get("enabled", False):
+    if cfg.get("analysis", {}).get("equal_weighted", {}).get("enabled", False):
         try:
-            from ..extensions.equal_weighted_exhibit import generate_equal_weighted_exhibit
+            from ..analysis.equal_weighted_exhibit import generate_equal_weighted_exhibit
         except ImportError:
-            from extensions.equal_weighted_exhibit import generate_equal_weighted_exhibit
+            from analysis.equal_weighted_exhibit import generate_equal_weighted_exhibit
         generate_equal_weighted_exhibit(quintile_returns)
 
     # -----------------------------------------------------------------------------#

@@ -67,6 +67,10 @@ analysis:
     max_iter: 300                   # maximum iterations for k-means
     pca_n_components: 2             # number of principal components for visualization
 
+  # src/analysis/equal_weighted_exhibit.py (not run standalone; triggered from back_test.py)
+  equal_weighted:
+    enabled: false                        # if true, back_test.py writes reports/analysis/equal_weighted/exhibit_equal_weighted_performance.png
+
 # src/regime_shifts/
 regime_shifts:
   # src/regime_shifts/regime_shift.py
@@ -88,9 +92,6 @@ extensions:
     bootstrap_iterations: 200           # Number of bootstrap iterations (default: 200)
     random_seed: 42                     # random seed for efficacy bootstrap
     save_series: true                   # Save efficacy and multiplier time series for plotting
-
-  equal_weighted:
-    enabled: false                        # generate equal-weighted long-only across all quintiles exhibit
 
   random_long_bias:
     enabled: false                        # generate random long bias investigation exhibit
