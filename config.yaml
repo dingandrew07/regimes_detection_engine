@@ -75,8 +75,10 @@ regime_shifts:
 
   # src/regime_shifts/alpha_by_regime.py
   alpha_by_regime:
-    regime_method: "percentile"              # method for regime labeling: "percentile" or "absolute"
-    regime_threshold_percentile: 0.75         # percentile threshold (0-1) used when method="percentile" (e.g., 0.5 = median, 0.75 = 75th percentile)
+    regime_method: "phase"                   # method for regime labeling: "phase", "percentile", or "absolute"
+    low_threshold_percentile: 0.40           # lower EWMA percentile for phase method (stable vs elevated)
+    high_threshold_percentile: 0.75          # upper EWMA percentile for phase method (elevated vs crisis)
+    regime_threshold_percentile: 0.75         # percentile threshold (0-1) used when method="percentile"
     regime_threshold_absolute: 0.5           # absolute EWMA value threshold used when method="absolute"
 
 # src/extensions/

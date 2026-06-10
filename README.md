@@ -36,7 +36,7 @@ Run after the main pipeline. These scripts depend on cached outputs from the ste
 | Folder | Contents |
 |--------|----------|
 | `reports/analysis/` | Clustering exhibits (`clustering analysis/`), similar-period plots (`similar periods/`) |
-| `reports/regime_shifts/` | Exhibit 9 (EWMA), alpha-by-regime exhibit and summary |
+| `reports/regime_shifts/` | Exhibit 9 (EWMA), alpha-by-regime exhibit |
 | `reports/backtest/` | Core backtest exhibits (Exhibits 1, 10–12) |
 | `reports/extensions/` | Extension outputs (`efficacy_score/`, `equal_weighted/`, `random_long_bias/`) |
 
@@ -50,7 +50,7 @@ Run after the main pipeline. These scripts depend on cached outputs from the ste
 | `similar_periods.py` | Similar-period plots |
 | `regime_shifts/regime_shift.py` | Exhibit 9 (EWMA) |
 | `backtest/back_test.py` | Exhibit 1 (volatility targeting), Exhibit 10 (quintile performance), Exhibit 11 (drawdown comparison), Exhibit 12 (quantile sweeps) |
-| `regime_shifts/alpha_by_regime.py` | Alpha-by-regime exhibit and summary |
+| `regime_shifts/alpha_by_regime.py` | Alpha-by-regime exhibit |
 | `extensions/equal_weighted_exhibit.py` | Equal-weighted performance exhibit |
 | `extensions/random_long_bias.py` | Random long bias comparison exhibit |
 | `backtest/appendix.py` | Appendix exhibits A1–A3 |
