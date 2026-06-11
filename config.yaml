@@ -74,6 +74,39 @@ analysis:
 
 # src/regime_shifts/
 regime_shifts:
+  # Shared catalog for detection_quality.py and left_tail_analysis.py
+  known_events:
+    - name: "1987_crash"
+      shock_start: "1987-10-31"
+      shock_end: "1987-12-31"
+    - name: "1990_recession"
+      shock_start: "1990-07-31"
+      shock_end: "1990-10-31"
+    - name: "1998_LTCM"
+      shock_start: "1998-08-31"
+      shock_end: "1998-10-31"
+    - name: "dotcom_bust"
+      shock_start: "2000-03-31"
+      shock_end: "2002-10-31"
+    - name: "GFC"
+      shock_start: "2007-08-31"
+      shock_end: "2009-03-31"
+    - name: "2011_downgrade"
+      shock_start: "2011-07-31"
+      shock_end: "2011-10-31"
+    - name: "2015_china_scare"
+      shock_start: "2015-08-31"
+      shock_end: "2015-09-30"
+    - name: "2018_Q4"
+      shock_start: "2018-10-31"
+      shock_end: "2018-12-31"
+    - name: "COVID"
+      shock_start: "2020-02-29"
+      shock_end: "2020-03-31"
+    - name: "2022_bear"
+      shock_start: "2022-01-31"
+      shock_end: "2022-10-31"
+
   # src/regime_shifts/regime_shift.py
   regime_shift:
     lookback_periods: [12, 24, 36, 48]  # months for EWMA calculation (1-year, 2-year, 3-year, 4-year)
@@ -94,20 +127,18 @@ regime_shifts:
 
   # src/regime_shifts/detection_quality.py
   detection_quality:
-    known_events:
-      - name: "GFC"
-        shock_start: "2007-08-31"
-        shock_end: "2009-03-31"
-        plot_start: "2006-01-01"
-        plot_end: "2011-12-31"
-      - name: "COVID"
-        shock_start: "2020-02-29"
-        shock_end: "2020-03-31"
-        plot_start: "2019-01-01"
-        plot_end: "2021-12-31"
     stable_buffer_months: 6                    # exclude N months around each event from "stable" pool
     lag_anchor: "shock_end"                    # "shock_end" | "shock_start" — anchor for resolution lag
     detection_window_months: 24                # max months after shock_start to count as "detected"
+
+  # src/regime_shifts/left_tail_analysis.py
+  left_tail:
+    event_anchor: "shock_end"                 # "shock_end" | "shock_start" — anchor for crisis-linked lookback
+    transition_lookback_months: 6             # known event anchor must fall in [t-lookback, t] for crisis-linked
+    post_event_window_months: 12              # episode must enter crisis_onset/resolution within this window
+    post_transition_windows: [3, 6, 12]       # horizons (months) for post-transition alpha slices
+    stabilization_age_months: 6               # age bucket boundary for pre-stabilization analysis
+    strategy: "Q1_minus_Q5"                   # backtest column to analyze
 
   # src/regime_shifts/regime_gating.py (hooks into back_test.py when enabled)
   regime_gating:

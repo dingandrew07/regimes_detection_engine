@@ -51,6 +51,7 @@ Run after the main pipeline. These scripts depend on cached outputs from the ste
 | 4 | `src/regime_shifts/detection_quality.py` | *(standalone only)* |
 | 5 | `src/regime_shifts/alpha_by_regime.py` | *(standalone only)* |
 | 6 | `src/regime_shifts/regime_age.py` | *(standalone only)* |
+| 7 | `src/regime_shifts/left_tail_analysis.py` | *(standalone only)* |
 
 `src/analysis/equal_weighted_exhibit.py` is not run standalone; enable via `analysis.equal_weighted.enabled: true` in `config.yaml` and it runs at the end of `back_test.py`.
 
@@ -85,7 +86,7 @@ Note: `df_zscored` (unwinsorized z-scores) lives in memory inside `state_variabl
 | `reports/analysis/clustering analysis/` | Clustering evaluation, PCA scatter, means table |
 | `reports/analysis/similar periods/` | Similar-period plots |
 | `reports/analysis/equal_weighted/` | Equal-weighted performance exhibit |
-| `reports/regime_shifts/` | Exhibit 9 (EWMA), detection-quality summary exhibit, detection-quality timeline, alpha-by-regime exhibit, regime-age exhibit, gated backtest exhibits (`gated_backtest/<mode>/`) |
+| `reports/regime_shifts/` | Exhibit 9 (EWMA), detection-quality summary exhibit, detection-quality timeline, alpha-by-regime exhibit, regime-age exhibit, left-tail exhibit, gated backtest exhibits (`gated_backtest/<mode>/`) |
 | `reports/extensions/efficacy_score/backtest/` | Backtest exhibits when efficacy extension is enabled |
 | `reports/extensions/random_long_bias/` | Random long bias comparison exhibit |
 
@@ -276,6 +277,20 @@ When `extensions.efficacy_score.enabled: true`, all backtest report outputs rout
 
 ---
 
+### `src/regime_shifts/known_events.py`
+
+**Purpose:** Shared loader and helpers for the configured left-tail market crisis catalog. Single source of truth used by `detection_quality.py` and `left_tail_analysis.py`.
+
+**CLI:** Not run standalone; imported by other regime-shift modules.
+
+**Config:** `regime_shifts.known_events` — list of episodes, each with `name`, `shock_start`, `shock_end` (month-end dates). Default catalog: 1987 crash, 1990 recession, 1998 LTCM, dot-com bust, GFC, 2011 downgrade, 2015 China scare, 2018 Q4, COVID, 2022 bear market.
+
+**Notes:**
+- Expanding the catalog increases the detection-quality recall denominator and the number of crisis-linked transition episodes in left-tail analysis.
+- Legacy fallback: if `regime_shifts.known_events` is absent, reads `regime_shifts.detection_quality.known_events`.
+
+---
+
 ### `src/regime_shifts/detection_quality.py`
 
 **Purpose:** Evaluate whether phase regime labels reliably identify shifts (timing and stability), separate from economic validation in `alpha_by_regime.py`. Measures shift detection recall, false positive rate, resolution lag, label persistence, and whether elevated months predict crisis onset in the next month; produces a summary exhibit and a regime-colored timeline exhibit.
@@ -285,7 +300,7 @@ When `extensions.efficacy_score.enabled: true`, all backtest report outputs rout
 **Inputs:**
 - `cache/ewma_regime_shifts.pkl` (from `regime_shift.py`)
 
-**Config:** `regime_shifts.detection_quality.known_events`, `stable_buffer_months`, `lag_anchor` (`shock_end` | `shock_start`), `detection_window_months`; labeling thresholds from `regime_shifts.alpha_by_regime` (`regime_method` must be `"phase"`, `low_threshold_percentile`, `high_threshold_percentile`)
+**Config:** `regime_shifts.known_events`; `regime_shifts.detection_quality.stable_buffer_months`, `lag_anchor` (`shock_end` | `shock_start`), `detection_window_months`; labeling thresholds from `regime_shifts.alpha_by_regime` (`regime_method` must be `"phase"`, `low_threshold_percentile`, `high_threshold_percentile`)
 
 **Outputs:**
 - `reports/regime_shifts/detection_quality_summary.png` — multi-section summary exhibit (aggregate metrics, per-event shift detection, resolution lag, elevated prediction, contingency table)
@@ -344,6 +359,32 @@ When `extensions.efficacy_score.enabled: true`, all backtest report outputs rout
 - Default strategy is `Q1_minus_Q5` (long-short quintile spread).
 - Shared age utilities (`compute_months_since_transition`, `bucket_regime_age`) live in `regime_labels.py`.
 - Run after `regime_shift.py` and alongside `alpha_by_regime.py`.
+
+---
+
+### `src/regime_shifts/left_tail_analysis.py`
+
+**Purpose:** Load configured known left-tail events, classify regime transitions as crisis-linked vs gradual, and test whether post-crisis transition windows (especially pre-stabilization) generate disproportionate alpha compared to gradual transitions and stable months.
+
+**CLI:** `python src/regime_shifts/left_tail_analysis.py [--method phase|percentile|absolute] [--strategy Q1_minus_Q5] [--low-threshold-percentile 0.4] [--high-threshold-percentile 0.75] [--no-cache]`
+
+**Inputs:**
+- `regime_shifts.known_events` from `config.yaml` (via `known_events.py`)
+- `cache/ewma_regime_shifts.pkl` (from `regime_shift.py`)
+- Backtest returns (re-run internally via `back_test.run_backtest`)
+- `data/spx_monthly.xlsx` — SPX levels for exhibit chart context only
+
+**Config:** `regime_shifts.known_events`; `regime_shifts.left_tail` (`event_anchor`, `transition_lookback_months`, `post_event_window_months`, `post_transition_windows`, `stabilization_age_months`, `strategy`); labeling thresholds from `regime_shifts.alpha_by_regime`; age buckets from `regime_shifts.regime_age`; plus `backtest.n_buckets`, `backtest.back_test_start_date`, `backtest.forward_look_months`, `state_variables.similarity_score.similarity_window`
+
+**Outputs:**
+- `reports/regime_shifts/left_tail_exhibit.png` — timeline (SPX drawdown, regime phases, known-event bands), post-transition alpha/Sharpe by window, age-curve comparison, summary statistics table
+
+**Notes:**
+- Uses **ungated** backtest returns (same as `regime_age.py`) to measure economic performance during those months.
+- **crisis_linked** episode: known event anchor (`event_anchor`, default `shock_end`) in lookback window AND episode enters `crisis_onset` or `resolution` within `post_event_window_months`.
+- **gradual** episode: stable/elevated-only path OR no known event in lookback.
+- Statistical tests: Mann-Whitney U (crisis vs gradual pooled returns), bootstrap 95% CI, Spearman age trend within crisis-linked episodes.
+- Run after `regime_shift.py` and alongside `alpha_by_regime.py` / `regime_age.py`.
 
 ---
 
@@ -438,5 +479,6 @@ When `extensions.efficacy_score.enabled: true`, all backtest report outputs rout
 | `analysis/equal_weighted_exhibit.py` | Equal-weighted performance exhibit (`reports/analysis/equal_weighted/`; triggered from `back_test.py`, not run standalone) |
 | `regime_shifts/alpha_by_regime.py` | Alpha-by-regime exhibit |
 | `regime_shifts/regime_age.py` | Regime-age exhibit |
+| `regime_shifts/left_tail_analysis.py` | Left-tail event exhibit |
 | `extensions/random_long_bias.py` | Random long bias comparison exhibit |
 | `backtest/appendix.py` | Appendix exhibits A1–A3 |

@@ -14,6 +14,7 @@ import pandas as pd
 from scipy.stats import fisher_exact
 
 try:
+    from .known_events import load_known_events, parse_event_date
     from .regime_labels import (
         REGIME_COLORS,
         REGIME_DISPLAY_NAMES,
@@ -23,6 +24,7 @@ try:
         load_ewma_regime_shifts,
     )
 except ImportError:
+    from known_events import load_known_events, parse_event_date
     from regime_labels import (
         REGIME_COLORS,
         REGIME_DISPLAY_NAMES,
@@ -40,10 +42,6 @@ HIGH_STRESS_REGIMES = {"crisis_onset", "resolution"}
 CRISIS_RESOLUTION_LABELS = ["crisis_onset", "resolution"]
 
 
-def _parse_event_date(value: str) -> pd.Timestamp:
-    return pd.Timestamp(value)
-
-
 def _months_between(start: pd.Timestamp, end: pd.Timestamp, index: pd.DatetimeIndex) -> int:
     """Count index steps from start (inclusive) to end (inclusive); NaN if either missing."""
     if start not in index or end not in index:
@@ -59,8 +57,8 @@ def build_stable_mask(
     """True for months considered ground-truth stable (outside buffered event windows)."""
     stable = pd.Series(True, index=labels.index)
     for event in known_events:
-        start = _parse_event_date(event["shock_start"]) - pd.DateOffset(months=stable_buffer_months)
-        end = _parse_event_date(event["shock_end"]) + pd.DateOffset(months=stable_buffer_months)
+        start = parse_event_date(event["shock_start"]) - pd.DateOffset(months=stable_buffer_months)
+        end = parse_event_date(event["shock_end"]) + pd.DateOffset(months=stable_buffer_months)
         stable.loc[(stable.index >= start) & (stable.index <= end)] = False
     return stable
 
@@ -76,7 +74,7 @@ def compute_shift_detection(
     """
     rows = []
     for event in known_events:
-        shock_start = _parse_event_date(event["shock_start"])
+        shock_start = parse_event_date(event["shock_start"])
         window_end = shock_start + pd.DateOffset(months=detection_window_months)
 
         window_labels = labels.loc[
@@ -189,7 +187,7 @@ def compute_resolution_lag(
 
     rows = []
     for event in known_events:
-        anchor = _parse_event_date(event[lag_anchor])
+        anchor = parse_event_date(event[lag_anchor])
         future_labels = labels.loc[labels.index >= anchor]
         resolution_dates = future_labels.index[future_labels == "resolution"]
 
@@ -317,17 +315,18 @@ def create_detection_timeline_exhibit(
     ax_ewma.axhline(thresholds["low"], color="gray", linestyle="--", linewidth=1, label="low threshold", zorder=2)
     ax_ewma.axhline(thresholds["high"], color="gray", linestyle=":", linewidth=1, label="high threshold", zorder=2)
 
-    for event in known_events:
-        shock_start = _parse_event_date(event["shock_start"])
-        shock_end = _parse_event_date(event["shock_end"])
+    for i, event in enumerate(known_events):
+        shock_start = parse_event_date(event["shock_start"])
+        shock_end = parse_event_date(event["shock_end"])
         ax_ewma.axvspan(
             shock_start, shock_end,
             alpha=0.15, facecolor="none", edgecolor="black", linewidth=1.5, hatch="///", zorder=4,
         )
         mid = shock_start + (shock_end - shock_start) / 2
+        y_top = ax_ewma.get_ylim()[1]
         ax_ewma.text(
-            mid, ax_ewma.get_ylim()[1] * 0.97, event["name"],
-            ha="center", va="top", fontsize=9, fontweight="bold", zorder=5,
+            mid, y_top * (0.97 if i % 2 == 0 else 0.88), event["name"],
+            ha="center", va="top", fontsize=7, fontweight="bold", zorder=5,
         )
 
     ax_ewma.set_ylabel("Mean EWMA of global score", fontsize=11)
@@ -356,8 +355,8 @@ def create_detection_timeline_exhibit(
     ax_lane.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
 
     for event in known_events:
-        shock_start = _parse_event_date(event["shock_start"])
-        shock_end = _parse_event_date(event["shock_end"])
+        shock_start = parse_event_date(event["shock_start"])
+        shock_end = parse_event_date(event["shock_end"])
         ax_lane.axvline(shock_start, color="black", linestyle="--", linewidth=0.8, alpha=0.5)
         ax_lane.axvline(shock_end, color="black", linestyle="--", linewidth=0.8, alpha=0.5)
 
@@ -614,7 +613,7 @@ def run_detection_quality_analysis(
         "high_threshold_percentile", 0.75
     )
 
-    known_events = dq_config.get("known_events", [])
+    known_events = load_known_events(cfg)
     stable_buffer_months = dq_config.get("stable_buffer_months", 6)
     lag_anchor = dq_config.get("lag_anchor", "shock_end")
     detection_window_months = dq_config.get("detection_window_months", 24)
