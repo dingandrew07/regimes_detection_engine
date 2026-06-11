@@ -5,7 +5,7 @@ import pandas as pd
 import joblib
 from pathlib import Path
 import yaml
-from typing import Optional, List
+from typing import Optional, List, Dict, Union
 
 PHASE_REGIMES = ['stable', 'elevated', 'crisis_onset', 'resolution']
 LEGACY_REGIMES = ['transition', 'stable']
@@ -60,6 +60,30 @@ def load_ewma_regime_shifts(use_cache: bool = True, cache_dir: Optional[Path] = 
     return run_regime_shift_analysis(use_cache=use_cache, create_visualization=False)
 
 
+def get_phase_thresholds(
+    mean_ewma: pd.Series,
+    low_threshold_percentile: float,
+    high_threshold_percentile: float,
+) -> Dict[str, Union[float, pd.Series]]:
+    """Return low/high threshold values and month-over-month EWMA delta for phase labeling."""
+    if not (0 <= low_threshold_percentile <= 1):
+        raise ValueError(
+            f"low_threshold_percentile must be between 0 and 1 (got {low_threshold_percentile})"
+        )
+    if not (0 <= high_threshold_percentile <= 1):
+        raise ValueError(
+            f"high_threshold_percentile must be between 0 and 1 (got {high_threshold_percentile})"
+        )
+    if low_threshold_percentile >= high_threshold_percentile:
+        raise ValueError("low_threshold_percentile must be less than high_threshold_percentile")
+
+    return {
+        "low": float(mean_ewma.quantile(low_threshold_percentile)),
+        "high": float(mean_ewma.quantile(high_threshold_percentile)),
+        "delta": mean_ewma.diff(),
+    }
+
+
 def label_regimes(
     ewma_df: pd.DataFrame,
     method: str = "percentile",
@@ -88,9 +112,12 @@ def label_regimes(
         if low_threshold_percentile >= high_threshold_percentile:
             raise ValueError("low_threshold_percentile must be less than high_threshold_percentile")
 
-        low_threshold = mean_ewma.quantile(low_threshold_percentile)
-        high_threshold = mean_ewma.quantile(high_threshold_percentile)
-        delta = mean_ewma.diff()
+        thresholds = get_phase_thresholds(
+            mean_ewma, low_threshold_percentile, high_threshold_percentile
+        )
+        low_threshold = thresholds["low"]
+        high_threshold = thresholds["high"]
+        delta = thresholds["delta"]
 
         labels = pd.Series('stable', index=mean_ewma.index, name='regime')
         labels[(mean_ewma > high_threshold) & (delta > 0)] = 'crisis_onset'

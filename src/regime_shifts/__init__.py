@@ -1,3 +1,3 @@
 """
-Regime shift analysis: EWMA detection and alpha performance by regime.
+Regime shift analysis: EWMA detection, detection quality, and alpha by regime.
 """

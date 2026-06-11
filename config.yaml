@@ -86,9 +86,26 @@ regime_shifts:
     regime_threshold_percentile: 0.75         # percentile threshold (0-1) used when method="percentile"
     regime_threshold_absolute: 0.5           # absolute EWMA value threshold used when method="absolute"
 
+  # src/regime_shifts/detection_quality.py
+  detection_quality:
+    known_events:
+      - name: "GFC"
+        shock_start: "2007-08-31"
+        shock_end: "2009-03-31"
+        plot_start: "2006-01-01"
+        plot_end: "2011-12-31"
+      - name: "COVID"
+        shock_start: "2020-02-29"
+        shock_end: "2020-03-31"
+        plot_start: "2019-01-01"
+        plot_end: "2021-12-31"
+    stable_buffer_months: 6                    # exclude N months around each event from "stable" pool
+    lag_anchor: "shock_end"                    # "shock_end" | "shock_start" — anchor for resolution lag
+    detection_window_months: 24                # max months after shock_start to count as "detected"
+
   # src/regime_shifts/regime_gating.py (hooks into back_test.py when enabled)
   regime_gating:
-    enabled: false                           # scale backtest returns by regime exposure (0 = cash, 1 = full)
+    enabled: true                           # scale backtest returns by regime exposure (0 = cash, 1 = full)
     mode: "resolution_only"                  # "resolution_only" | "exclude_crisis_onset"
 
 # src/extensions/

@@ -47,8 +47,9 @@ Run after the main pipeline. These scripts depend on cached outputs from the ste
 |------|--------|-----|
 | 1 | `src/analysis/similar_periods.py` | `python cli.py similar-periods` |
 | 2 | `src/analysis/clustering_analysis.py` | *(standalone only)* |
-| 3 | `src/regime_shifts/regime_shift.py` | *(standalone or via alpha_by_regime)* |
-| 4 | `src/regime_shifts/alpha_by_regime.py` | *(standalone only)* |
+| 3 | `src/regime_shifts/regime_shift.py` | *(standalone or via alpha_by_regime / detection_quality)* |
+| 4 | `src/regime_shifts/detection_quality.py` | *(standalone only)* |
+| 5 | `src/regime_shifts/alpha_by_regime.py` | *(standalone only)* |
 
 `src/analysis/equal_weighted_exhibit.py` is not run standalone; enable via `analysis.equal_weighted.enabled: true` in `config.yaml` and it runs at the end of `back_test.py`.
 
@@ -83,7 +84,7 @@ Note: `df_zscored` (unwinsorized z-scores) lives in memory inside `state_variabl
 | `reports/analysis/clustering analysis/` | Clustering evaluation, PCA scatter, means table |
 | `reports/analysis/similar periods/` | Similar-period plots |
 | `reports/analysis/equal_weighted/` | Equal-weighted performance exhibit |
-| `reports/regime_shifts/` | Exhibit 9 (EWMA), alpha-by-regime exhibit, gated backtest exhibits (`gated_backtest/<mode>/`) |
+| `reports/regime_shifts/` | Exhibit 9 (EWMA), detection-quality summary exhibit, detection-quality timeline, alpha-by-regime exhibit, gated backtest exhibits (`gated_backtest/<mode>/`) |
 | `reports/extensions/efficacy_score/backtest/` | Backtest exhibits when efficacy extension is enabled |
 | `reports/extensions/random_long_bias/` | Random long bias comparison exhibit |
 
@@ -274,6 +275,30 @@ When `extensions.efficacy_score.enabled: true`, all backtest report outputs rout
 
 ---
 
+### `src/regime_shifts/detection_quality.py`
+
+**Purpose:** Evaluate whether phase regime labels reliably identify shifts (timing and stability), separate from economic validation in `alpha_by_regime.py`. Measures shift detection recall, false positive rate, resolution lag, label persistence, and whether elevated months predict crisis onset in the next month; produces a summary exhibit and a regime-colored timeline exhibit.
+
+**CLI:** `python src/regime_shifts/detection_quality.py [--low-threshold-percentile 0.4] [--high-threshold-percentile 0.75] [--no-cache] [--no-plot]`
+
+**Inputs:**
+- `cache/ewma_regime_shifts.pkl` (from `regime_shift.py`)
+
+**Config:** `regime_shifts.detection_quality.known_events`, `stable_buffer_months`, `lag_anchor` (`shock_end` | `shock_start`), `detection_window_months`; labeling thresholds from `regime_shifts.alpha_by_regime` (`regime_method` must be `"phase"`, `low_threshold_percentile`, `high_threshold_percentile`)
+
+**Outputs:**
+- `reports/regime_shifts/detection_quality_summary.png` — multi-section summary exhibit (aggregate metrics, per-event shift detection, resolution lag, elevated prediction, contingency table)
+- `reports/regime_shifts/detection_quality_timeline.png` — EWMA with threshold lines, regime bands, and known-event annotations
+
+**Notes:**
+- Requires `regime_method: "phase"`. Does not use backtest returns.
+- **Stable months** for false-positive rate: all labeled months outside buffered known-event windows (`stable_buffer_months` before `shock_start` and after `shock_end`).
+- **Shift detection recall:** per configured event, checks for `crisis_onset` then `resolution` within `detection_window_months` after `shock_start`.
+- **Elevated prediction (exploratory):** tests whether `elevated` at month *t* predicts `crisis_onset` at *t+1*. Reports hit rate, baseline, lift, and Fisher exact p-value in the summary exhibit.
+- Run after `regime_shift.py` and before `alpha_by_regime.py` to validate labels before trusting gated backtest results.
+
+---
+
 ### `src/regime_shifts/alpha_by_regime.py`
 
 **Purpose:** Label each month by regime based on the mean EWMA, then compute separate Sharpe ratios and cumulative-return contributions for each regime across all backtest strategies.
@@ -384,6 +409,7 @@ When `extensions.efficacy_score.enabled: true`, all backtest report outputs rout
 | `analysis/similar_periods.py` | Similar-period plots |
 | `analysis/clustering_analysis.py` | Clustering evaluation, PCA scatter, means table |
 | `regime_shifts/regime_shift.py` | Exhibit 9 (EWMA) |
+| `regime_shifts/detection_quality.py` | Detection-quality summary exhibit, detection-quality timeline exhibit |
 | `backtest/back_test.py` | Exhibit 1 (volatility targeting), Exhibit 10 (quintile performance), Exhibit 11 (drawdown comparison), Exhibit 12 (quantile sweeps); triggers equal-weighted exhibit when `analysis.equal_weighted.enabled: true` |
 | `analysis/equal_weighted_exhibit.py` | Equal-weighted performance exhibit (`reports/analysis/equal_weighted/`; triggered from `back_test.py`, not run standalone) |
 | `regime_shifts/alpha_by_regime.py` | Alpha-by-regime exhibit |
