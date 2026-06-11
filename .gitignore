@@ -18,11 +18,8 @@ build/
 cache/
 reports/
 
-# Local data: track fixed inputs; ignore derived outputs (e.g. df_raw.xlsx)
-data/*
-!data/spx_monthly.xlsx
-!data/spx_daily.xlsx
-!data/copper_monthly.xlsx
+# Local / downloaded data (Excel inputs and derived files like df_raw.xlsx)
+data/
 
 # Jupyter
 .ipynb_checkpoints/
