@@ -50,6 +50,7 @@ Run after the main pipeline. These scripts depend on cached outputs from the ste
 | 3 | `src/regime_shifts/regime_shift.py` | *(standalone or via alpha_by_regime / detection_quality)* |
 | 4 | `src/regime_shifts/detection_quality.py` | *(standalone only)* |
 | 5 | `src/regime_shifts/alpha_by_regime.py` | *(standalone only)* |
+| 6 | `src/regime_shifts/regime_age.py` | *(standalone only)* |
 
 `src/analysis/equal_weighted_exhibit.py` is not run standalone; enable via `analysis.equal_weighted.enabled: true` in `config.yaml` and it runs at the end of `back_test.py`.
 
@@ -84,7 +85,7 @@ Note: `df_zscored` (unwinsorized z-scores) lives in memory inside `state_variabl
 | `reports/analysis/clustering analysis/` | Clustering evaluation, PCA scatter, means table |
 | `reports/analysis/similar periods/` | Similar-period plots |
 | `reports/analysis/equal_weighted/` | Equal-weighted performance exhibit |
-| `reports/regime_shifts/` | Exhibit 9 (EWMA), detection-quality summary exhibit, detection-quality timeline, alpha-by-regime exhibit, gated backtest exhibits (`gated_backtest/<mode>/`) |
+| `reports/regime_shifts/` | Exhibit 9 (EWMA), detection-quality summary exhibit, detection-quality timeline, alpha-by-regime exhibit, regime-age exhibit, gated backtest exhibits (`gated_backtest/<mode>/`) |
 | `reports/extensions/efficacy_score/backtest/` | Backtest exhibits when efficacy extension is enabled |
 | `reports/extensions/random_long_bias/` | Random long bias comparison exhibit |
 
@@ -323,6 +324,29 @@ When `extensions.efficacy_score.enabled: true`, all backtest report outputs rout
 
 ---
 
+### `src/regime_shifts/regime_age.py`
+
+**Purpose:** Test whether alpha increases as regimes age by computing months since the last regime transition, bucketing into age groups (0–6, 6–12, 12–24, 24+ months), and comparing mean return and Sharpe across buckets with hypothesis tests.
+
+**CLI:** `python src/regime_shifts/regime_age.py [--method phase|percentile|absolute] [--strategy Q1_minus_Q5] [--low-threshold-percentile 0.4] [--high-threshold-percentile 0.75] [--no-cache]`
+
+**Inputs:**
+- `cache/ewma_regime_shifts.pkl` (from `regime_shift.py`)
+- Backtest returns (re-run internally via `back_test.run_backtest`)
+
+**Config:** `regime_shifts.regime_age.age_bin_edges`, `age_bin_labels`, `strategy`; labeling thresholds from `regime_shifts.alpha_by_regime`; plus `backtest.n_buckets`, `backtest.back_test_start_date`, `backtest.forward_look_months`, `state_variables.similarity_score.similarity_window`
+
+**Outputs:**
+- `reports/regime_shifts/regime_age_exhibit.png` — mean monthly return and Sharpe by regime-age bucket, with Spearman and trend-test statistics
+
+**Notes:**
+- Regime age = consecutive months in the current regime label since the last transition (0 at the transition month).
+- Default strategy is `Q1_minus_Q5` (long-short quintile spread).
+- Shared age utilities (`compute_months_since_transition`, `bucket_regime_age`) live in `regime_labels.py`.
+- Run after `regime_shift.py` and alongside `alpha_by_regime.py`.
+
+---
+
 ### `src/regime_shifts/regime_gating.py`
 
 **Purpose:** Regime-conditional exposure for the main backtest (Step 2). When enabled, scales each month's strategy return by 0 (cash) or 1 (full exposure) based on phase regime labels from EWMA.
@@ -413,5 +437,6 @@ When `extensions.efficacy_score.enabled: true`, all backtest report outputs rout
 | `backtest/back_test.py` | Exhibit 1 (volatility targeting), Exhibit 10 (quintile performance), Exhibit 11 (drawdown comparison), Exhibit 12 (quantile sweeps); triggers equal-weighted exhibit when `analysis.equal_weighted.enabled: true` |
 | `analysis/equal_weighted_exhibit.py` | Equal-weighted performance exhibit (`reports/analysis/equal_weighted/`; triggered from `back_test.py`, not run standalone) |
 | `regime_shifts/alpha_by_regime.py` | Alpha-by-regime exhibit |
+| `regime_shifts/regime_age.py` | Regime-age exhibit |
 | `extensions/random_long_bias.py` | Random long bias comparison exhibit |
 | `backtest/appendix.py` | Appendix exhibits A1–A3 |

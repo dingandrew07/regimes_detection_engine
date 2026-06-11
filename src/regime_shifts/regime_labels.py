@@ -2,6 +2,7 @@
 # ------------------------------------------------------------------------------
 
 import pandas as pd
+import numpy as np
 import joblib
 from pathlib import Path
 import yaml
@@ -170,3 +171,57 @@ def label_regimes(
         raise ValueError(f"Unknown method: {method}. Use 'phase', 'percentile', or 'absolute'")
 
     return labels
+
+
+DEFAULT_AGE_BIN_EDGES = [0, 6, 12, 24]
+DEFAULT_AGE_BIN_LABELS = ['0-6', '6-12', '12-24', '24+']
+
+
+def compute_months_since_transition(labels: pd.Series) -> pd.Series:
+    """
+    Months since the regime label last changed (0 at the transition month).
+    """
+    if len(labels) == 0:
+        return pd.Series(dtype=int, name='regime_age')
+
+    ages = []
+    current_age = 0
+    prev_label = None
+
+    for label in labels:
+        if prev_label is None or label != prev_label:
+            current_age = 0
+        else:
+            current_age += 1
+        ages.append(current_age)
+        prev_label = label
+
+    return pd.Series(ages, index=labels.index, name='regime_age')
+
+
+def bucket_regime_age(
+    ages: pd.Series,
+    bin_edges: Optional[List[int]] = None,
+    bin_labels: Optional[List[str]] = None,
+) -> pd.Series:
+    """
+    Map continuous regime age to ordered bucket labels.
+
+    Default buckets: 0-6, 6-12, 12-24, 24+ months (left-closed, right-open).
+    """
+    if bin_edges is None:
+        bin_edges = DEFAULT_AGE_BIN_EDGES
+    if bin_labels is None:
+        bin_labels = DEFAULT_AGE_BIN_LABELS
+
+    if len(bin_labels) != len(bin_edges):
+        raise ValueError("bin_labels must have the same length as bin_edges")
+
+    extended_edges = list(bin_edges) + [np.inf]
+    return pd.cut(
+        ages,
+        bins=extended_edges,
+        labels=bin_labels,
+        right=False,
+        include_lowest=True,
+    )
